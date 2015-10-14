@@ -1,27 +1,39 @@
-const path = require('path');
-const async = require('async');
-const Browser = require('zombie');
-const cheerio = require('cheerio');
+const path = require('path'),
+      async = require('async'),
+      Browser = require('zombie'),
+      assert = require('chai').assert,
+      cheerio = require('cheerio'),
+      format = require('util').format,
+      request = require('request');
 
-const util = require('../utils/util');
-const Adapter = require('../adapters/adapter');
+const util = require('../utils/util'),
+      Adapter = require('../adapters/adapter'),
+      RequestClient = require('../utils/requestClient'),
+      Problem = require('../models/problem'),
+      config = require('../config/defaults'),
+      errors = require('../utils/errors');
 
-const CF_HOST = "codeforces.com";
-const LOGIN_PAGE_PATH = "/enter";
-const SUBMIT_PAGE_PATH = "/problemset/submit";
+const CF_HOST = "codeforces.com",
+      LOGIN_PAGE_PATH = "/enter",
+      SUBMIT_PAGE_PATH = "/problemset/submit",
+      PROBLEMSET_PATH = "/problemset/page",
+      STATUS_PATH = "/problemset/status",
+      SUBMISSIONS_PATH = "/problemset/status?friends=on",
+      SUBMISSIONS_API = "/api/user.status?handle=%s&count=30";
 
 // Options and global variables
 const options = {
   runScripts: false,
-  loadCSS: false,
-  maxWait: "30s"
+  waitDuration: "15s"
 };
 
-const LOGIN_TEST_REGEX = /logout/i;
-const AUTH_REQUIRED_TEST_REGEX = /authori[sz]ation\s+required/i;
-const WRONG_LANGUAGE_REGEX = /submit\s+in\s+this\s+language/i;
+const LOGIN_TEST_REGEX = /logout/i,
+      AUTH_REQUIRED_TEST_REGEX = /authori[sz]ation\s+required/i,
+      LLD_REGEX = /preferred\s+to\s+use\s+cin/i;
 
-const WORKER_BROWSERS = 1;
+const OJ_NAME = "cf",
+      CONFIG = config.oj[OJ_NAME],
+      WORKER_BROWSERS = CONFIG.submissionWorkersPerAdapter || 1;
 
 module.exports = (function(parentCls) {
     // constructor
@@ -29,23 +41,21 @@ module.exports = (function(parentCls) {
         // super constructor call
         parentCls.call(this, acct);
 
-        this.browsers = [];
-        this.last = 0;
+        var browsers = [];
+        var last = 0;
         var that = this;
 
-        this._login = function(browser, callback) {
+        var _login = function(browser, callback) {
           async.waterfall([
             function(subCallback) {
-              browser.visit("http://" + CF_HOST + LOGIN_PAGE_PATH).then(subCallback);
+              browser.visit("http://" + CF_HOST + LOGIN_PAGE_PATH, subCallback)
             },
             function(subCallback) {
               browser
-                .fill('#handle', acct.user())
-                .fill('#password', acct.pass())
+                .fill('#handle', acct.getUser())
+                .fill('#password', acct.getPass())
                 .check('#remember')
-                .pressButton('input[value="Login"]')
-                .then(subCallback)
-                .catch(subCallback);
+                .pressButton('input[value="Login"]', subCallback);
             }
           ], function(err) {
             var html = browser.html() || '';
@@ -53,121 +63,166 @@ module.exports = (function(parentCls) {
           });
         };
 
-        this._getSubmissionId = function(browser, html, callback) {
-          var $ = cheerio.load(html);
-          var line = 0;
-          var submissionId = -1;
-          $("table.status-frame-datatable tr").each(function() {
-            if (line > 0) {
-                var user = $(this).children().first().next().next();
-                user = user.children().first().text();
-                var _submissionId = $(this).attr('data-submission-id');
-                if (user === acct.user() && _submissionId && _submissionId.match(/[0-9]+/) && submissionId != that.last) {
-                    submissionId = _submissionId;
-                    return false;
-                }
-            }
-            line++;
-            if (line > 4) return false;
-          });
-          if (submissionId == -1) {
-            return callback({name: 'Can\'t load submission id.', retry: true});
-          } else {
-            that.last = submissionId;
-            return callback(null, submissionId);
-          }
-        };
-
-        this._send = function(probNum, codeString, language, tryLogin, callback) {
-          codeString = codeString + '\n// ' + (new Date()).getTime();
-          var langVal = cls.getLangVal(util.getLang(language));
-          if (langVal < 0) {
-              return callback(new Error('Linguagem desconhecida.'));
-          }
-          that.sendQueue.push({probNum: probNum, language: langVal, codeString: codeString}, callback);
-        };
-
-        this._internalSend = function(browser, probNum, codeString, language, tryLogin, callback) {
-          async.waterfall([
-            function(subCallback) {
-              browser.visit("http://" + CF_HOST + SUBMIT_PAGE_PATH).then(subCallback);
-            },
-            function(subCallback) {
+        var _getSubmissionId = function(browser, callback) {
+          browser.visit("http://" + CF_HOST + SUBMISSIONS_PATH).then(
+            function() {
+              var $ = cheerio.load(browser.html());
+              var line = 0;
+              var id = null;
               try {
-                browser
-                  .fill('input[name="submittedProblemCode"]', probNum)
-                  .select('select[name="programTypeId"]', language)
-                  .fill('#sourceCodeTextarea', codeString)
-                  .pressButton('input[value="Submit"]')
-                  .then(subCallback);
-              } catch (err) {
-                subCallback(null);
+                var row = $("table.status-frame-datatable tr").eq(1);
+                var id = $(row).attr('data-submission-id');
+                assert(id && id.length >= 6, 'submission id is valid');
+              } catch (e) {
+                return callback(errors.SubmissionFail);
               }
+              return callback(null, id);
             }
-          ], function(err) {
+          ).catch(callback);
+        };
+
+        var _internalSend = function(browser, probNum, codeString, language, tryLogin, callback) {
+
+          var _afterSubmission = function(retry, err) {
             var html = browser.html() || '';
-            if (err) {
+            if (err && !retry) {
                 return callback(err);
             } else if (browser.location.pathname === '/') {
-                if (tryLogin) {
-                    return that._login(browser, function(err, logged) {
-                        if (!logged) return callback(new Error('Can\'t login.'));
-                        return that._internalSend(browser, probNum, codeString, language, false, callback);
-                    });
-                } else {
-                    return callback(new Error('Can\'t submit.'));
-                }
-            } else if (html.match(WRONG_LANGUAGE_REGEX)) {
-              return callback({name: 'Linguagem inválida para este problema.', retry: false});
-            } else {
-              if (browser.location.pathname == SUBMIT_PAGE_PATH) {
-                return callback({name: 'Submissão inválida. Veja se você não está utilizando %lld ao invés de %I64d, por exemplo (necessário para submissões no Codeforces).', retry: false});
+              if (!tryLogin) {
+                return callback(errors.LoginFail);
+              } else {
+                return _login(browser, function(err, logged) {
+                  if (!logged) return callback(errors.LoginFail);
+                  return _internalSend(browser, probNum, codeString, language, false, callback);
+                });
               }
-              return that._getSubmissionId(browser, html, callback);
+            } else if (retry && html.match(LLD_REGEX)) {
+              browser
+                .check('input[name="doNotShowWarningAgain"]')
+                .pressButton('input[value="Submit"]', _afterSubmission.bind(null, false));
+            } else if (html.length && browser.location.pathname !== STATUS_PATH) {
+              return callback(errors.InvalidSubmission);
+            } else {
+              return _getSubmissionId(browser, callback);
             }
-          });
+          }
+
+          async.waterfall([
+            function(subCallback) {
+              browser.visit("http://" + CF_HOST + SUBMIT_PAGE_PATH, subCallback)
+            },
+            function(subCallback) {
+              browser
+                .fill('input[name="submittedProblemCode"]', probNum)
+                .select('select[name="programTypeId"]', language)
+                .fill('#sourceCodeTextarea', codeString)
+                .pressButton('input[value="Submit"]', subCallback);
+            }
+          ], _afterSubmission.bind(null, true));
         };
 
-        this._getAvailableBrowser = function() {
-          for (var i = 0; i < that.browsers.length; i++) {
-            if (that.browsers[i]._available) {
-              that.browsers[i]._available = false;
-              return that.browsers[i];
+        var _getAvailableBrowser = function() {
+          for (var i = 0; i < browsers.length; i++) {
+            if (!browsers[i].tabs) {
+              browsers[i] = new Browser(options);
+              browser[i]._available = true;
+            }
+            if (browsers[i]._available) {
+              browsers[i]._available = false;
+              return browsers[i];
             }
           }
           var browser = new Browser(options);
-          that.browsers.push(browser);
+          browsers.push(browser);
           return browser;
         };
 
-        this._releaseBrowser = function(browser) {
+        var _releaseBrowser = function(browser) {
           browser._available = true;
         };
 
-        this.sendQueue = async.queue(function (sub, callback) {
-          var browser = that._getAvailableBrowser();
-          that._internalSend(browser, sub.probNum, sub.codeString, sub.language, true, function(err, submissionId) {
-            that._releaseBrowser(browser);
+        var sendQueue = async.queue(function (sub, callback) {
+          var browser = _getAvailableBrowser();
+          _internalSend(browser, sub.probNum, sub.codeString, sub.language, true, function(err, submissionId) {
+            _releaseBrowser(browser);
             return callback(err, submissionId);
           });
         }, WORKER_BROWSERS);
 
+        this._send = function(probNum, codeString, language, tryLogin, callback) {
+          codeString = codeString + '\n// ' + (new Date()).getTime();
+          var langVal = CONFIG.submitLang[language];
+          if (!langVal) return callback(errors.InvalidLanguage);
+          sendQueue.push({probNum: probNum, language: langVal, codeString: codeString}, callback);
+        };
+
+        this._judge = function(submissions, callback) {
+          var url = format('http://' + CF_HOST + SUBMISSIONS_API, acct.getUser());
+          request({
+            url: url,
+            json: true
+          }, function(error, response, data) {
+            if (error || response.statusCode !== 200 || data.status !== 'OK') {
+              return callback();
+            }
+            data = data.result;
+            for (var i = 0; i < data.length; i++) {
+              var id = data[i].id;
+              if (submissions[id]) {
+                that.events.emit('verdict', id, data[i].verdict);
+              }
+            }
+            return callback();
+          });
+        }
+
     }
 
-    /**
-     * @param lang One of LANG_* constants
-     * @return SPOJ lang value or -1 if unacceptable.
-     */
-    cls.getLangVal = function(lang){
-        switch (lang) {
-            case util.LANG_C: return '10';
-            case util.LANG_JAVA: return '36';
-            case util.LANG_CPP: return '1';
-            case util.LANG_PASCAL: return '4';
-            case util.LANG_CPP11: return '42';
-        }
-        return -1;
-    };
+    cls.fetchProblems = function() {
+      var client = new RequestClient('http', CF_HOST + PROBLEMSET_PATH);
+
+      var iterate = function(i, cb) {
+        client.get('/' + i, function(err, res, html) {
+          var $ = cheerio.load(html);
+          var table = $('table.problems').children('tr:not(:first-child)');
+          async.each(table, function(row, cb) {
+            try {
+              var tds = $(row).children();
+              var id = tds.first().children(":first-child").html();
+              var name = tds.first().next().children(":first-child").children(":first-child").html();
+              id = /([0-9a-zA-Z].*)/.exec(id)[0];
+              name = /([0-9a-zA-Z].*)/.exec(name)[0];
+            } catch(e) {
+              return cb(e);
+            }
+            var url = CONFIG.getUrl(id).replace('http://', '');
+            var req = new RequestClient('http', url);
+            req.get('/', function(err, res, html) {
+              if (!html) return cb();
+              var $ = cheerio.load(html);
+              var page = '<link rel="stylesheet" href="http://st.codeforces.com/css/ttypography.css" type="text/css" charset="utf-8">';
+              page += '<link rel="stylesheet" href="http://st.codeforces.com/css/problem-statement.css" type="text/css" charset="utf-8">';
+              var content = $('div.problemindexholder');
+              var title = content.find('.header > .title').html();
+              if (!title) return cb();
+              title = title.slice(3);
+              content.find('.header > .title').html(title);
+              page += content;
+              req = null;
+              return Problem.createNew(id, name, OJ_NAME, cb, page);
+            });
+          }, function(err) {
+            if (i < 1) return cb(err);
+            return setImmediate(iterate.bind(null, i-1, cb));
+          });
+        });
+      }
+
+      iterate(5, function(err) {
+        console.log('Finished loading up problems from ' + CONFIG.name);
+      });
+    }
+//    cls.fetchProblems();
 
     return cls;
 })(Adapter);

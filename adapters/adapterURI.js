@@ -14,8 +14,7 @@ const SUBMISSIONS_PAGE_PATH = "/judge/pt/runs";
 // Options and global variables
 const options = {
   runScripts: false,
-  loadCSS: false,
-  maxWait: "30s"
+  waitDuration: "15s"
 };
 
 const LOGIN_TEST_REGEX = /seu\s+progresso/i;
@@ -40,8 +39,8 @@ module.exports = (function(parentCls) {
             },
             function(subCallback) {
               browser
-                .fill('#UserEmail', acct.user())
-                .fill('#UserPassword', acct.pass())
+                .fill('#UserEmail', acct.getUser())
+                .fill('#UserPassword', acct.getPass())
                 .pressButton('input.send-sign-in')
                 .then(subCallback)
                 .catch(subCallback);

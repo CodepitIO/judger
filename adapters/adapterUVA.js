@@ -1,26 +1,27 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require('fs'),
+      path = require('path'),
+      assert = require('chai').assert,
+      async = require('async'),
+      cheerio = require('cheerio'),
+      request = require('request');
 
-const async = require('async');
+const RequestClient = require('../utils/requestClient'),
+      Adapter = require('../adapters/adapter'),
+      util = require('../utils/util'),
+      config = require('../config/defaults'),
+      errors = require('../utils/errors');
 
-const RequestClient = require('../utils/requestClient');
-const util = require('../utils/util');
-const Adapter = require('../adapters/adapter');
-
-const UVA_HOST = "uva.onlinejudge.org";
-const SUBMIT_PAGE_PATH = "/index.php?option=com_onlinejudge&Itemid=25";
-const SUBMIT_PATH = "/index.php?option=com_onlinejudge&Itemid=25&page=save_submission";
+const UVA_HOST = "uva.onlinejudge.org",
+      SUBMIT_PAGE_PATH = "/index.php?option=com_onlinejudge&Itemid=25",
+      SUBMIT_PATH = "/index.php?option=com_onlinejudge&Itemid=25&page=save_submission",
+      SUBMISSIONS_PATH = '/index.php?option=com_onlinejudge&Itemid=9';
 
 const LOGGED_PATTERN = /My\s+Account/i;
+      LOGIN_FORM_PATTERN = /<form([^>]+?id\s*=\s*["']?\w*mod_loginform[^>]*)>((?:.|\r|\n)*?)<\/form>/i;
+      INPUT_PATTERN = /<input([^>]+?)\/?>/gi;
 
-const LOGIN_FORM_PATTERN =
-    // group 1: form attribs
-    // group 2: form HTML contents
-    /<form([^>]+?id\s*=\s*["']?\w*mod_loginform[^>]*)>((?:.|\r|\n)*?)<\/form>/i;
-
-const INPUT_PATTERN =
-    // group 1: attribs
-    /<input([^>]+?)\/?>/gi;
+const OJ_NAME = "uva",
+      CONFIG = config.oj[OJ_NAME];
 
 module.exports = (function(parentCls){
     // constructor
@@ -28,56 +29,39 @@ module.exports = (function(parentCls){
         // super constructor call
         parentCls.call(this, acct);
 
-        // private instance fields
+        var that = this;
         var uvaClient = new RequestClient('https', UVA_HOST);
 
-        var that = this;
-
-        // public instance method
-        this._login = function(callback){
+        var _login = function(callback) {
             async.waterfall([
                 function(subCallback){
                     uvaClient.get('/', subCallback);
                 },
-                function(res, html, subCallback){
-                    var f = cls.parseForm(LOGIN_FORM_PATTERN, html);
-                    var err = null;
-                    if (!f)
-                        err = ("cannot find HTML form");
-                    else if (!f.userField)
-                        err = ("cannot find user field");
-                    else if (!f.passField)
-                        err = ("cannot find pass field");
-                    else if (!f.action)
-                        err = ("cannot find action");
-
-                    if (err)
-                        return subCallback(new Error(err));
-
-                    f.data[f.userField] = acct.user();
-                    f.data[f.passField] = acct.pass();
-                    var opts = {
-                        // Must not follow otherwise will miss the session cookie.
-                        followAllRedirects: true,
-                        headers: {
-                            Referer: 'https://' + UVA_HOST,
-                        },
-                    };
+                function(res, html, subCallback) {
+                    try {
+                        var f = cls.parseForm(LOGIN_FORM_PATTERN, html);
+                        f.data[f.userField] = acct.getUser();
+                        f.data[f.passField] = acct.getPass();
+                        var opts = {
+                            followAllRedirects: true,
+                            headers: { Referer: 'https://' + UVA_HOST, },
+                        };
+                    } catch (e) {
+                        return subCallback(errors.SubmissionFail, res, html);
+                    }
                     uvaClient.post(f.action, f.data, opts, subCallback);
                 }
             ],
             function(err, res, html) {
                 html = html || '';
-                return callback(err, !!html.match(LOGGED_PATTERN));
+                if (!!html.match(LOGGED_PATTERN)) return callback(null, true);
+                return callback(err, false);
             });
         };
 
-        var counter = 0;
-        this._send = function(probNum, codeString, language, tryLogin, callback) {
-            var langVal = cls.getLangVal(util.getLang(language));
-            if (langVal < 0) {
-                return callback(new Error('Linguagem desconhecida.'));
-            }
+        var _send = function(probNum, codeString, language, tryLogin, callback) {
+            var langVal = CONFIG.submitLang[language];
+            if (!langVal) return callback(errors.InvalidLanguage);
 
             var data = {
                 localid: probNum,
@@ -92,23 +76,65 @@ module.exports = (function(parentCls){
                     Referer: 'https://' + UVA_HOST + SUBMIT_PAGE_PATH,
                 },
             };
-            uvaClient.postMultipart(SUBMIT_PATH, data, opts, function(err, res, html){
-                if (err) {
-                    return callback(err);
-                } else if (html.match(/not\s+authori[zs]ed/i)) {
-                    if (tryLogin) {
-                        return that._login(function(err, logged) {
-                            if (!logged) return callback(new Error('Can\'t login.'));
-                            return that._send(probNum, codeString, language, false, callback);
-                        });
+            uvaClient.postMultipart(SUBMIT_PATH, data, opts, function(err, res, html) {
+                if (err) return callback(err);
+                if (html.match(/not\s+authori[zs]ed/i)) {
+                    if (!tryLogin) {
+                        return callback(errors.LoginFail);
                     } else {
-                        return callback(new Error('Can\'t submit.'));
+                        return _login(function(err, logged) {
+                            if (!logged) return callback(errors.LoginFail);
+                            return _send(probNum, codeString, language, false, callback);
+                        });
                     }
-                } else {
-                    callback(null);
                 }
+                try {
+                    var id = /([0-9]{6,15})/.exec(res.req.path)[0];
+                    assert(id && id.length >= 6, 'submission id is valid');
+                } catch (err) {
+                    return callback(err);
+                }
+                return callback(null, id);
             });
         };
+
+        this._send = _send;
+        this._judge = function(submissions, callback) {
+            async.waterfall([
+                function(subCallback){
+                    uvaClient.get(SUBMISSIONS_PATH, subCallback);
+                },
+                function(res, html, subCallback) {
+                    html = html || '';
+                    if (!html.match(LOGGED_PATTERN)) {
+                        _login(function(err, logged) {
+                            if (!logged) return callback();
+                            return uvaClient.get(SUBMISSIONS_PATH, subCallback);
+                        });
+                    } else {
+                        return subCallback(null, null, html);
+                    }
+                }
+            ],
+            function(err, res, html) {
+                if (!html) return callback();
+                var $ = cheerio.load(html);
+                for (var id in submissions) {
+                  var data = null;
+                  try {
+                    data = $('td:contains("' + id + '")');
+                    data = data.next().next().next();
+                    if (!data.find('a').html()) {
+                      data = data.html();
+                    } else {
+                      data = data.find('a').html();
+                    }
+                  } catch(e) {}
+                  that.events.emit('verdict', id, data);
+                }
+                return callback();
+            });
+        }
     }
 
     cls.parseForm = function(formPat, html){
@@ -120,28 +146,23 @@ module.exports = (function(parentCls){
         var atts = util.parseAttribs(attribs);
         var r = {contents: contents, data: {}};
 
-        for (var key in atts)
-        {
-            if (key.toLowerCase() === 'action')
-            {
+        for (var key in atts) {
+            if (key.toLowerCase() === 'action') {
                 r.action = util.htmlDecodeSimple(atts[key]);
                 break;
             }
         }
 
-        while(match = INPUT_PATTERN.exec(contents))
-        {
+        while(match = INPUT_PATTERN.exec(contents)) {
             atts = util.parseAttribs(match[1]);
             var value = null, name = null, isText = false;
 
-            for (var key in atts)
-            {
+            for (var key in atts) {
                 var val = util.htmlDecodeSimple(atts[key]);
                 var keyLower = key.toLowerCase();
                 var valLower = val.toLowerCase();
 
-                switch(keyLower)
-                {
+                switch(keyLower) {
                 case 'type':
                     isText = (valLower === 'password' || valLower === 'text');
                     break;
@@ -154,52 +175,18 @@ module.exports = (function(parentCls){
                 }
             }
 
-            if (name !== null && isText)
-            {
+            if (name !== null && isText) {
                 var nameLower = name.toLowerCase();
                 if (nameLower.indexOf("user") >= 0)
                     r.userField = name;
                 else if (nameLower.indexOf("pass")>=0)
                     r.passField = name;
-            }
-            else if (value !== null && name !== null)
-            {
+            } else if (value !== null && name !== null) {
                 r.data[name] = value;
             }
         }
 
         return r;
-    };
-
-    /**
-     * @param lang One of LANG_* constants
-     * @return UVA lang value or -1 if unacceptable.
-     */
-    cls.getLangVal = function(lang){
-        switch (lang)
-        {
-        case util.LANG_C: return 1;
-        case util.LANG_JAVA: return 2;
-        case util.LANG_CPP: return 3;
-        case util.LANG_PASCAL: return 4;
-        case util.LANG_CPP11: return 5;
-        }
-
-        return -1;
-    };
-
-    cls.getLang = function(id)
-    {
-        switch(id)
-        {
-        case 1: return "C";
-        case 2: return "Java";
-        case 3: return "C++";
-        case 4: return "Pascal";
-        case 5: return "C++11";
-        }
-
-        return "?";
     };
 
     return cls;

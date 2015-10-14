@@ -2,6 +2,9 @@
 
 *.log
 *.sqlite?
+problems.txt
+problems/
+tests/
 
 ### Libs
 

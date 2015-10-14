@@ -1,24 +1,25 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require('fs'),
+      path = require('path'),
+      async = require('async'),
+      assert = require('chai').assert,
+      cheerio = require('cheerio'),
+      request = require('request');
 
-const async = require('async');
+const RequestClient = require('../utils/requestClient'),
+      Adapter = require('../adapters/adapter'),
+      config = require('../config/defaults'),
+      errors = require('../utils/errors');
 
-const RequestClient = require('../utils/requestClient');
-const util = require('../utils/util');
-const Adapter = require('../adapters/adapter');
+const TIMUS_HOST = "acm.timus.ru",
+      SUBMIT_PAGE_PATH = "/submit.aspx",
+      SUBMIT_PATH = "/submit.aspx?space=1",
+      STATUS_PATH = "/status.aspx?space=1&count=50";
 
-const TIMUS_HOST = "acm.timus.ru";
-const SUBMIT_PAGE_PATH = "/submit.aspx";
-const SUBMIT_PATH = "/submit.aspx?space=1";
+const SUBMIT_FORM_PATTERN = /<form([^>]+?)>((?:.|\n)*?)<\/form>/i,
+      INPUT_PATTERN = /<input([^>]+?)\/?>/gi;
 
-const SUBMIT_FORM_PATTERN =
-    // group 1: form attribs
-    // group 2: form HTML contents
-    /<form([^>]+?)>((?:.|\n)*?)<\/form>/i;
-
-const INPUT_PATTERN =
-    // group 1: attribs
-    /<input([^>]+?)\/?>/gi;
+const OJ_NAME = "timus",
+      CONFIG = config.oj[OJ_NAME];
 
 module.exports = (function(parentCls){
     // constructor
@@ -26,23 +27,17 @@ module.exports = (function(parentCls){
         // super constructor call
         parentCls.call(this, acct);
 
-        // private instance fields
+        var that = this;
         var timusClient = new RequestClient('http', TIMUS_HOST);
 
-        // public instance method
-        this._login = function(callback) {};
-
-        var counter = 0;
-        this._send = function(probNum, codeString, language, _ignore, callback) {
-          var langVal = cls.getLangVal(util.getLang(language));
-          if (langVal < 0) {
-              return callback(new Error('Linguagem desconhecida.'));
-          }
+        var _send = function(probNum, codeString, language, _ignore, callback) {
+          var langVal = CONFIG.submitLang[language];
+          if (!langVal) return callback(errors.InvalidLanguage);
           
           var data = {
               Action: 'submit',
               SpaceID: '1',
-              JudgeID: '166862LG',
+              JudgeID: acct.pass,
               Language: langVal,
               ProblemNum: probNum,
               Source: codeString,
@@ -58,30 +53,50 @@ module.exports = (function(parentCls){
               if (err)
                   return callback(err);
               if (html.match(/Invalid\s+JUDGE_ID/i))
-                  return callback(new Error('cannot login. password correct?'));
+                  return callback(errors.LoginFail);
               if (html.match(/between\s+submissions/i))
-                  return callback(new Error('too fast, try again.'));
-              callback(null);
+                  return callback(errors.SubmissionFail);
+              timusClient.get(STATUS_PATH, function(err, res, html) {
+                if (err) return callback(err);
+                try {
+                  var $ = cheerio.load(html);
+                  var row = $('a[href="author.aspx?id='+ acct.user +'"]:first-child').parent().parent();
+                  var id = row.children('td.id:first-child').html();
+                  assert(id && id.length >= 6, 'submission id is valid');
+                } catch (e) {
+                  return callback(e);
+                }
+                return callback(null, id);
+              });
           });
         };
-    }
 
-    /**
-     * @param lang One of LANG_* constants
-     * @return SPOJ lang value or -1 if unacceptable.
-     */
-    cls.getLangVal = function(lang){
-        switch (lang)
-        {
-        case util.LANG_C: return 25;
-        case util.LANG_JAVA: return 32;
-        case util.LANG_CPP: return 26;
-        case util.LANG_PASCAL: return 31;
-        case util.LANG_CPP11: return 28;
+        this._send = _send;
+        this._judge = function(submissions, callback) {
+          request({
+              url: 'http://' + TIMUS_HOST + STATUS_PATH + '&author=' + acct.getUser()
+          }, function (error, response, body) {
+            if (error || response.statusCode !== 200) {
+              return callback();
+            }
+            var $ = cheerio.load(body);
+            for (var id in submissions) {
+              var data = null;
+              try {
+                data = $('a:contains("' + id + '")');
+                data = data.parent().next().next().next().next().next();
+                if (!data.find('a').html()) {
+                  data = data.html();
+                } else {
+                  data = data.find('a').html();
+                }
+              } catch(e) {}
+              that.events.emit('verdict', id, data);
+            }
+            return callback();
+          });
         }
-
-        return -1;
-    };
+    }
 
     return cls;
 })(Adapter);

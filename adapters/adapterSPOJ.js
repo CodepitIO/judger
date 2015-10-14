@@ -1,26 +1,34 @@
-const path = require('path');
-const async = require('async');
-const Browser = require('zombie');
-const cheerio = require('cheerio');
+const path = require('path'),
+      async = require('async'),
+      Browser = require('zombie'),
+      assert = require('chai').assert,
+      cheerio = require('cheerio');
 
-const util = require('../utils/util');
-const Adapter = require('../adapters/adapter');
+const RequestClient = require('../utils/requestClient'),
+      util = require('../utils/util'),
+      Adapter = require('../adapters/adapter');
+      config = require('../config/defaults'),
+      errors = require('../utils/errors');
 
-const SPOJ_LOGIN_PATH = path.join(__dirname, "resources", "spoj_login.html");
-const SPOJ_SUBMIT_PATH = path.join(__dirname, "resources", "spoj_submit.html");
+const SPOJ_LOGIN_PATH = path.join(__dirname, "..", "resources", "spoj_login.html"),
+      SPOJ_SUBMIT_PATH = path.join(__dirname, "..", "resources", "spoj_submit.html");
+
+const SPOJ_HOST = "www.spoj.com",
+      SUBMISSIONS_PATH = '/status';
 
 // Options and global variables
 const options = {
   runScripts: false,
-  loadCSS: false,
-  maxWait: "30s"
+  waitDuration: "15s"
 };
 
-const LOGIN_TEST_REGEX = /total\s+submissions/i;
-const AUTH_REQUIRED_TEST_REGEX = /authori[sz]ation\s+required/i;
-const WRONG_LANGUAGE_REGEX = /submit\s+in\s+this\s+language/i;
+const LOGIN_TEST_ANTI_REGEX = /sign\s+up/i,
+      AUTH_REQUIRED_TEST_REGEX = /authori[sz]ation\s+required/i,
+      WRONG_LANGUAGE_REGEX = /submit\s+in\s+this\s+language/i;
 
-const WORKER_BROWSERS = 3;
+const OJ_NAME = "spoj",
+      CONFIG = config.oj[OJ_NAME],
+      WORKER_BROWSERS = CONFIG.submissionWorkersPerAdapter || 1;
 
 module.exports = (function(parentCls) {
     // constructor
@@ -28,121 +36,131 @@ module.exports = (function(parentCls) {
         // super constructor call
         parentCls.call(this, acct);
 
-        this.browsers = [];
         var that = this;
 
-        this._login = function(browser, callback) {
+        // public attributes and functions
+        this._send = function(probNum, codeString, language, tryLogin, callback) {
+          var langVal = CONFIG.submitLang[language];
+          if (!langVal) return callback(errors.InvalidLanguage);
+          sendQueue.push({probNum: probNum, language: langVal, codeString: codeString}, callback);
+        };
+
+        var spojClient = new RequestClient('http', SPOJ_HOST);
+        this._judge = function(submissions, callback) {
+            async.waterfall([
+                function(subCallback){
+                    spojClient.get(SUBMISSIONS_PATH + '/' + acct.getUser(), subCallback);
+                },
+                function(res, html, subCallback) {
+                    html = html || '';
+                    if (!html) return subCallback();
+                    var $ = cheerio.load(html);
+                    for (var id in submissions) {
+                      var data = null;
+                      try {
+                        var data = $("#statusres_" + id).attr('status');
+                      } catch (err) {}
+                      that.events.emit('verdict', id, data);
+                    }
+                    return subCallback();
+                }
+            ], callback);
+        };
+
+        // private attributes and functions
+        var browsers = [];
+
+        var _login = function(browser, callback) {
           async.waterfall([
             function(subCallback) {
-              browser.visit("file://" + SPOJ_LOGIN_PATH).then(subCallback);
+              browser.visit("file://" + SPOJ_LOGIN_PATH, subCallback);
             },
             function(subCallback) {
               browser
-                .fill('login_user', acct.user())
-                .fill('password', acct.pass())
+                .fill('login_user', acct.getUser())
+                .fill('password', acct.getPass())
                 .check('autologin')
-                .pressButton('submit')
-                .then(subCallback)
-                .catch(subCallback);
+                .pressButton('submit', subCallback);
             }
           ], function(err) {
             var html = browser.html() || '';
-            return callback(null, !!html.match(LOGIN_TEST_REGEX));
+            return callback(null, !html.match(LOGIN_TEST_ANTI_REGEX));
           });
         };
 
-        this._getSubmissionId = function(browser, html, callback) {
-          var $ = cheerio.load(html);
-          var submissionId = $('input[name="newSubmissionId"]').val();
-          if (!submissionId || !(submissionId.match(/[0-9]+/))) {
-            return callback({name: 'Can\'t load submission id.', retry: true});
-          } else {
-            return callback(null, submissionId);
+        var _getSubmissionId = function(html, callback) {
+          try {
+            var $ = cheerio.load(html);
+            var id = $('input[name="newSubmissionId"]').val();
+            assert(id && id.length >= 6, 'submission id is valid');
+          } catch (e) {
+            return callback(e);
           }
+          return callback(null, id);
         };
 
-        this._send = function(probNum, codeString, language, tryLogin, callback) {
-          var langVal = cls.getLangVal(util.getLang(language));
-          if (langVal < 0) {
-              return callback(new Error('Linguagem desconhecida.'));
-          }
-          that.sendQueue.push({probNum: probNum, language: langVal, codeString: codeString}, callback);
-        };
-
-        this._internalSend = function(browser, probNum, codeString, language, tryLogin, callback) {
+        var _internalSend = function(browser, probNum, codeString, language, tryLogin, callback) {
           async.waterfall([
             function(subCallback) {
-              browser.visit("file://" + SPOJ_SUBMIT_PATH).then(subCallback);
+              browser.visit('file://' + SPOJ_SUBMIT_PATH, subCallback);
             },
             function(subCallback) {
               browser
                 .fill('input[name="problemcode"]', probNum)
                 .select('select[name="lang"]', language)
                 .fill('textarea', codeString)
-                .pressButton('input[value="Send"]')
-                .then(subCallback);
+                .pressButton('input[value="Send"]', subCallback);
             }
           ], function(err) {
             var html = browser.html() || '';
             if (err) {
                 return callback(err);
             } else if (html.match(AUTH_REQUIRED_TEST_REGEX)) {
-                if (tryLogin) {
-                    return that._login(browser, function(err, logged) {
-                        if (!logged) return callback(new Error('Can\'t login.'));
-                        return that._internalSend(browser, probNum, codeString, language, false, callback);
-                    });
+                if (!tryLogin) {
+                    return callback(errors.LoginFail);
                 } else {
-                    return callback(new Error('Can\'t submit.'));
+                    return _login(browser, function(err, logged) {
+                        if (!logged) return callback(errors.LoginFail);
+                        return _internalSend(browser, probNum, codeString, language, false, callback);
+                    });
                 }
             } else if (html.match(WRONG_LANGUAGE_REGEX)) {
-              return callback({name: 'Linguagem inválida para este problema.', retry: false});
+              return callback(errors.InvalidSubmission);
             } else {
-              return that._getSubmissionId(browser, html, callback);
+              return _getSubmissionId(html, callback);
             }
           });
         };
 
-        this._getAvailableBrowser = function() {
-          for (var i = 0; i < that.browsers.length; i++) {
-            if (that.browsers[i]._available) {
-              that.browsers[i]._available = false;
-              return that.browsers[i];
+        var _getAvailableBrowser = function() {
+          for (var i = 0; i < browsers.length; i++) {
+            if (!browsers[i].tabs) {
+              browsers[i] = new Browser(options);
+              browser[i]._available = true;
+            }
+            if (browsers[i]._available) {
+              browsers[i]._available = false;
+              return browsers[i];
             }
           }
           var browser = new Browser(options);
-          that.browsers.push(browser);
+          browsers.push(browser);
           return browser;
         };
 
-        this._releaseBrowser = function(browser) {
+        var _releaseBrowser = function(browser) {
           browser._available = true;
         };
 
-        this.sendQueue = async.queue(function (sub, callback) {
-          var browser = that._getAvailableBrowser();
-          that._internalSend(browser, sub.probNum, sub.codeString, sub.language, true, function(err, submissionId) {
-            that._releaseBrowser(browser);
+        var sendQueue = async.queue(function (sub, callback) {
+          var browser = _getAvailableBrowser();
+          _internalSend(browser, sub.probNum, sub.codeString, sub.language, true, function(err, submissionId) {
+            _releaseBrowser(browser);
             return callback(err, submissionId);
           });
         }, WORKER_BROWSERS);
 
     }
-
-    /**
-     * @param lang One of LANG_* constants
-     * @return SPOJ lang value or -1 if unacceptable.
-     */
-    cls.getLangVal = function(lang){
-        switch (lang) {
-            case util.LANG_C: return '11';
-            case util.LANG_JAVA: return '10';
-            case util.LANG_CPP: return '41';
-            case util.LANG_PASCAL: return '22';
-            case util.LANG_CPP11: return '44';
-        }
-        return -1;
-    };
 
     return cls;
 })(Adapter);

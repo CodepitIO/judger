@@ -1,80 +1,40 @@
-var events = require('events');
-var async = require('async');
-var PendingSubmission = require('./models/pending_submission');
+'use strict';
 
-module.exports = (function(app) {
-  this.app = app;
+const async = require('async');
+const PendingSubmission = require('./models/pending_submission');
 
-  var queue = async.queue(function (sub, callback) {
-    var adapter = sub.curAcct.adapter;
-    console.log('Sending code..');
-    adapter.send(sub.problemId, sub.code, sub.language, function(e, mustLogin) {
-      if (e) {
-        if (!mustLogin) {
-          return callback(e, false);
-        } else {
-          console.log('Not logged. Logging in..');
-          adapter.login(function(e) {
-            if (e) {
-              console.log('Something wrong with logon :(');
-              return callback(e, false);
+var pending = {};
+
+module.exports = (function(ojs) {
+  async.forever(
+    function(next) {
+      PendingSubmission
+      .find()
+      .populate('originalId')
+      .exec()
+      .then(function(submissions) {
+        for (var i in submissions) {
+          // creating a closure so we don't miss reference
+          // to the variables
+          (function(i) {
+            var id = submissions[i]._id;
+            if (!pending[id]) {
+              var oj = ojs[submissions[i].problemOj];
+              pending[id] = true;
+              oj.send(submissions[i], function(err) {
+                setImmediate(function() {
+                  delete pending[id];
+                });
+              });
             }
-            console.log('Logged!');
-            return callback(null, true);
-          });
+          })(i);
         }
-      } else {
-        console.log('Sent code!');
-        return callback(null, false);
-      }
-    });
-  }, 5);
-
-  queue.drain = function() {
-    console.log('all items have been processed');
-  }
-
-  function SubmissionEvent(submission) {
-    this.id = submission._id;
-    this.code = submission.code;
-    this.language = submission.language;
-    this.problemId = submission.problemId;
-    this.type = submission.problemOj;
-    this.curAcct = app.getNext(this.type);
-    var that = this;
-
-    try {
-      var queueCb = function(e, retry) {
-        if (retry) {
-          queue.push(that, queueCb);
-        }
-      }
-
-      queue.push(this, queueCb);
-    } catch (err) {
+        // TODO set this time in a config file
+        setTimeout(next, 1000);
+      });
+    },
+    function(err) {
       console.log(err);
     }
-  }
-
-  function cls(pending) {
-    this.runSubmit = function(callback) {
-      try {
-        setInterval(function() {
-          PendingSubmission
-          .find()
-          .exec()
-          .then(function(submissions) {
-            for (var i in submissions) {
-              if (!pending[submissions[i]._id]) {
-                pending[submissions[i]._id] = new SubmissionEvent(submissions[i]);
-              }
-            }
-          });
-        }, 1000);
-      } catch (err) {
-        console.log(err);
-      }
-    }
-  }
-  return cls;
+  );
 });

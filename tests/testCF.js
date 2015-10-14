@@ -13,7 +13,19 @@ var rd = readline.createInterface({
 });
 
 rd.on('line', function(line) {
-  s.send("33A", "#include <bits/stdc++.h>\nint main() { printf(\"%d\", 50); }", "cpp", function(err, submissionId) {
-    console.log(err, submissionId);
-  });
+  var f = function(cb) {
+    s.send("33A", "#include <bits/stdc++.h>\nint main() { printf(\"%d\", 50); }", "cpp", function(err, submissionId) {
+      cb(err, submissionId);
+    });
+  }
+  var g = function(fun,i) {
+    if (i >= 10) return;
+    else {
+      fun(function(err, submissionId) {
+        console.log(submissionId);
+        setImmediate(g.bind(null,fun,i+1));
+      });
+    }
+  }
+  g(f,0);
 });

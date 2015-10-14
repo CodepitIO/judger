@@ -10,7 +10,9 @@ var pendingSubmissionSchema = mongoose.Schema({
   problemOj: String,
   code: String,
   language: String,
-  originalId: {type: ObjectId, ref: 'Submission'}
+  originalId: {type: ObjectId, ref: 'Submission'},
+  submitAttempts: {type: Number, default: 0},
+  judgeAttempts: {type: Number, default: 0}
 });
 pendingSubmissionSchema.set('autoIndex', false);
 
