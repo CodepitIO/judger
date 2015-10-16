@@ -81,6 +81,7 @@ module.exports = {
         'cpp' : '41',
         'pascal' : '22',
         'cpp11' : '44',
+	'python' : '98',
       },
       verdictId: {
         '0' : -1,
@@ -109,6 +110,7 @@ module.exports = {
         'cpp' : '41',
         'pascal' : '22',
         'cpp11' : '44',
+	'python' : '98',
       },
       verdictId: {
         '0' : -1,
@@ -135,7 +137,9 @@ module.exports = {
         'c' : '25',
         'java' : '32',
         'cpp' : '26',
-        'pascal' : '31'
+        'pascal' : '31',
+	'cpp11' : '28',
+	'python' : '35',
       },
       verdictId: {
         'Can\'t be judged' : 9,
@@ -244,6 +248,7 @@ module.exports = {
         'cpp' : '1',
         'pascal' : '4',
         'cpp11' : '42',
+	'python' : '31',
       },
       verdictId: {
         'FAILED' : 2,

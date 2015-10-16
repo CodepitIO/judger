@@ -1,5 +1,6 @@
 // app/models/problem.js
 // load the things we need
+var Problem = require('./problem');
 var mongoose = require('mongoose');
 
 var ObjectId = mongoose.Schema.Types.ObjectId;

@@ -67,6 +67,7 @@ module.exports = (function() {
           }
 
           verdict = CONFIG.verdictId[verdict];
+	  console.log(id, config.verdictName[verdict]);
 
           var submission = submissions.map[id].data;
           var origSubmission = submission.originalId;

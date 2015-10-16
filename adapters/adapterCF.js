@@ -218,11 +218,11 @@ module.exports = (function(parentCls) {
         });
       }
 
-      iterate(5, function(err) {
+      iterate(26, function(err) {
         console.log('Finished loading up problems from ' + CONFIG.name);
       });
     }
-//    cls.fetchProblems();
+    //cls.fetchProblems();
 
     return cls;
 })(Adapter);
