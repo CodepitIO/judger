@@ -47,6 +47,15 @@ module.exports = {
     '12': 'Erro de submissão',
   },
 
+  extensions: {
+    'c' : '.c',
+    'java' : '.java',
+    'cpp' : '.cpp',
+    'pascal' : '.pas',
+    'cpp11' : '.cpp',
+    'python' : '.py',
+  },
+
   oj: {
     //URI
     uri: {
@@ -81,7 +90,7 @@ module.exports = {
         'cpp' : '41',
         'pascal' : '22',
         'cpp11' : '44',
-	'python' : '98',
+	      'python' : '98',
       },
       verdictId: {
         '0' : -1,
@@ -110,7 +119,7 @@ module.exports = {
         'cpp' : '41',
         'pascal' : '22',
         'cpp11' : '44',
-	'python' : '98',
+	      'python' : '98',
       },
       verdictId: {
         '0' : -1,
@@ -138,8 +147,8 @@ module.exports = {
         'java' : '32',
         'cpp' : '26',
         'pascal' : '31',
-	'cpp11' : '28',
-	'python' : '35',
+	      'cpp11' : '28',
+	      'python' : '35',
       },
       verdictId: {
         'Can\'t be judged' : 9,
@@ -248,7 +257,7 @@ module.exports = {
         'cpp' : '1',
         'pascal' : '4',
         'cpp11' : '42',
-	'python' : '31',
+      	'python' : '31',
       },
       verdictId: {
         'FAILED' : 2,
@@ -272,6 +281,34 @@ module.exports = {
       getUrl: function(id) {
         return 'http://codeforces.com/problemset/problem/' + id.slice(0,id.length-1) + '/' + id.slice(id.length-1);
       },
-    }
+    },
+
+    huxley: {
+      name: 'Huxley',
+      submitLang: {
+        'c' : '1',
+        'java' : '6',
+        'cpp' : '4',
+        'pascal' : '3',
+        'cpp11' : '4',
+        'python' : '5',
+      },
+      verdictId: {
+        'WAITING' : -3,
+        'CORRECT' : 1,
+        'EMPTY_ANSWER' : 2,
+        'WRONG_ANSWER' : 2,
+        'TIME_LIMIT_EXCEEDED' : 3,
+        'COMPILATION_ERROR' : 4,
+        'RUNTIME_ERROR' : 5,
+        'PRESENTATION_ERROR' : 8,
+        'WRONG_FILE_NAME' : 11,
+        'EMPTY_TEST_CASE' : 11,
+        'HUXLEY_ERROR' : 12,
+      },
+      getUrl: function(id) {
+        return 'http://www.thehuxley.com/problem/' + id;
+      },
+    },
   },
 };
