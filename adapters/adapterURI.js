@@ -47,7 +47,6 @@ module.exports = (function(parentCls) {
             }
           ], function(err) {
             var html = browser.html() || '';
-            console.log("hey u");
             return callback(null, !!html.match(LOGIN_TEST_REGEX));
           });
         };
