@@ -3,7 +3,8 @@
 const fs = require('fs'),
       async = require('async'),
       rest = require('restler'),
-      temp = require('temp').track();
+      temp = require('temp').track(),
+      path = require('path');
 
 const Adapter = require('../adapters/adapter'),
       config = require('../config/defaults'),
@@ -27,8 +28,12 @@ module.exports = (function(parentCls){
         // super constructor call
         parentCls.call(this, acct);
 
-        var that = this;
+        var folderDir = path.join('/tmp', '.' + OJ_NAME + '-' + acct.getUser());
+        if (!fs.existsSync(folderDir)) {
+            fs.mkdirSync(folderDir, { mode: '0777' });
+        }
 
+        var that = this;
         var token = null;
 
         this._login = function(callback) {
@@ -56,19 +61,18 @@ module.exports = (function(parentCls){
           var langVal = CONFIG.submitLang[language];
           if (!langVal) return callback(errors.InvalidLanguage);
 
-          var submissionId = null, path = null;
+          var submissionId = null;
+
+          var fileName = "Main" + config.extensions[language];
+
+          var fileDir = path.join(folderDir, fileName);
 
           async.waterfall([
             function(subCallback) {
-              temp.open({suffix: config.extensions[language]}, subCallback);
-            },
-            function(info, subCallback) {
-              fs.write(info.fd, codeString);
-              path = info.path;
-              fs.close(info.fd, subCallback);
+              fs.writeFile(fileDir, codeString, subCallback);
             },
             function(subCallback) {
-              var file = rest.file(path, null, fs.statSync(path).size, 'utf8', 'text/plain'); 
+              var file = rest.file(fileDir, null, fs.statSync(fileDir).size, 'utf8', 'text/plain'); 
               rest.post(`http://dev.thehuxley.com/api/v1/user/problems/${probNum}/submissions`, {
                 accessToken: token,
                 multipart: true,
@@ -81,7 +85,7 @@ module.exports = (function(parentCls){
                   return subCallback(result);
                 } else {
                   submissionId = result.id;
-                  temp.cleanup(subCallback);
+                  fs.unlink(fileDir, subCallback);
                 }
               });
             }
