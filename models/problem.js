@@ -2,6 +2,8 @@
 // load the things we need
 var mongoose = require('mongoose');
 var config = require('../config/defaults.js').oj;
+var errors = require('../utils/errors');
+var fs = require('fs');
 
 // define the schema for our user model
 var problemSchema = mongoose.Schema({
@@ -22,7 +24,7 @@ problemSchema.statics.filterProblems = function(pattern, page_limit, callback) {
   );
 }
 
-problemSchema.statics.createNew = function(pid, pname, poj) {
+problemSchema.statics.createNew = function(pid, pname, poj, cb) {
   var schema = this;
   schema.count({
     id: pid,
@@ -38,9 +40,20 @@ problemSchema.statics.createNew = function(pid, pname, poj) {
         url: config[poj].getUrl(pid)
       });
       console.log("Criou o problema " + fn);
-      newProblem.save();
+      newProblem.save(cb);
+    } else if (cb) {
+      return cb(errors.ProblemAlreadyExists);
     }
   });
+}
+
+problemSchema.statics.saveProblemContent = function(pid, content, cb) {
+  var schema = this;
+  var path = 'problems/' + pid;
+  fs.writeFile(path + '.html', content, function(err) {
+    if (err) return cb(err);
+    else schema.update({_id: pid}, {url: path}, cb);
+  })
 }
 
 // create the model for problems and expose it to our app

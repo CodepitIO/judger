@@ -142,7 +142,7 @@ module.exports = (function(parentCls){
         console.log('Finished loading up problems from ' + CONFIG.name);
       });
     }
-    cls.fetchProblems();
+    //cls.fetchProblems();
 
     return cls;
 })(Adapter);

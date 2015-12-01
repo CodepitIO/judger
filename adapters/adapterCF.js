@@ -4,6 +4,7 @@ const path = require('path'),
       assert = require('chai').assert,
       cheerio = require('cheerio'),
       format = require('util').format,
+      rest = require('restler'),
       request = require('request');
 
 const util = require('../utils/util'),
@@ -16,10 +17,10 @@ const util = require('../utils/util'),
 const CF_HOST = "codeforces.com",
       LOGIN_PAGE_PATH = "/enter",
       SUBMIT_PAGE_PATH = "/problemset/submit",
-      PROBLEMSET_PATH = "/problemset/page",
       STATUS_PATH = "/problemset/status",
       SUBMISSIONS_PATH = "/problemset/status?friends=on",
-      SUBMISSIONS_API = "/api/user.status?handle=%s&count=30";
+      SUBMISSIONS_API = "/api/user.status?handle=%s&count=30",
+      PROBLEMSET_API = "/api/problemset.problems";
 
 // Options and global variables
 const options = {
@@ -156,6 +157,7 @@ module.exports = (function(parentCls) {
           sendQueue.push({probNum: probNum, language: langVal, codeString: codeString}, callback);
         };
 
+        // TODO: change request to restler
         this._judge = function(submissions, callback) {
           var url = format('http://' + CF_HOST + SUBMISSIONS_API, acct.getUser());
           request({
@@ -175,54 +177,48 @@ module.exports = (function(parentCls) {
             return callback();
           });
         }
-
     }
 
-    cls.fetchProblems = function() {
-      var client = new RequestClient('http', CF_HOST + PROBLEMSET_PATH);
-
-      var iterate = function(i, cb) {
-        client.get('/' + i, function(err, res, html) {
-          var $ = cheerio.load(html);
-          var table = $('table.problems').children('tr:not(:first-child)');
-          async.each(table, function(row, cb) {
-            try {
-              var tds = $(row).children();
-              var id = tds.first().children(":first-child").html();
-              var name = tds.first().next().children(":first-child").children(":first-child").html();
-              id = /([0-9a-zA-Z].*)/.exec(id)[0];
-              name = /([0-9a-zA-Z].*)/.exec(name)[0];
-            } catch(e) {
-              return cb(e);
-            }
-            var url = CONFIG.getUrl(id).replace('http://', '');
-            var req = new RequestClient('http', url);
-            req.get('/', function(err, res, html) {
-              if (!html) return cb();
-              var $ = cheerio.load(html);
-              var page = '<link rel="stylesheet" href="http://st.codeforces.com/css/ttypography.css" type="text/css" charset="utf-8">';
-              page += '<link rel="stylesheet" href="http://st.codeforces.com/css/problem-statement.css" type="text/css" charset="utf-8">';
-              var content = $('div.problemindexholder');
-              var title = content.find('.header > .title').html();
-              if (!title) return cb();
-              title = title.slice(3);
-              content.find('.header > .title').html(title);
-              page += content;
-              req = null;
-              return Problem.createNew(id, name, OJ_NAME, cb, page);
-            });
-          }, function(err) {
-            if (i < 1) return cb(err);
-            return setImmediate(iterate.bind(null, i-1, cb));
-          });
+    cls.importProblemContent = function(problemId, contestId, index, callback) {
+      request('http://' + CF_HOST + `/contest/${contestId}/problem/${index}`,
+        function(error, response, body) {
+          try {
+            var $ = cheerio.load(body);
+            var content = $('div.problemindexholder');
+            var title = content.find('.header > .title').html();
+            title = title.slice(3);
+            content.find('.header > .title').html(title);
+            Problem.saveProblemContent(problemId, content, callback);
+          } catch (err) {
+            return callback(err);
+          }
         });
-      }
+    }
 
-      iterate(26, function(err) {
-        console.log('Finished loading up problems from ' + CONFIG.name);
+    // TODO: stop as soon as we see a contest already inserted
+    cls.fetchProblems = function(callback) {
+      rest.get('http://' + CF_HOST + PROBLEMSET_API).on('complete', function(result) {
+        if (result instanceof Error || result.status !== 'OK') {
+          return callback(result, 0);
+        } else {
+          result = result.result.problems;
+          async.forEachOf(result, function(obj, _, cb) {
+            var id = obj.contestId + obj.index;
+            var name = obj.name;
+            console.log(id, name);
+            return Problem.createNew(id, name, OJ_NAME, function(err, problem) {
+              if (!err) {
+                return cls.importProblemContent(problem._id, obj.contestId, obj.index, cb);
+              }
+              return cb();
+            });
+          }, callback);
+        }
       });
     }
-    //cls.fetchProblems();
+    /*cls.fetchProblems(function() {
+      console.log("Finished loading codeforces problems");
+    });//*/
 
     return cls;
 })(Adapter);
