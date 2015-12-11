@@ -205,7 +205,6 @@ module.exports = (function(parentCls) {
           async.forEachOf(result, function(obj, _, cb) {
             var id = obj.contestId + obj.index;
             var name = obj.name;
-            console.log(id, name);
             return Problem.createNew(id, name, OJ_NAME, function(err, problem) {
               if (!err) {
                 return cls.importProblemContent(problem._id, obj.contestId, obj.index, cb);
