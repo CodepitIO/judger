@@ -24,7 +24,7 @@ if (argv.save || argv.s) {
 
   Problem.find().select('_id oj fullName url').exec().then(function(problems) {
     for (var i = 0; i < problems.length; i++) {
-      if (problems[i].oj != 'uri') {
+      if (problems[i].oj != 'uri' && problems[i].fullName.substring(0,1) === '[') {
         try {
           fs.appendFileSync('./problems.txt', problems[i].fullName + "\n\r" + problems[i].url + "\n\r" + problems[i]._id + "\n\r", {flags: 'a', mode: '0666'});
         } catch (err) {
