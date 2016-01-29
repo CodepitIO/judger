@@ -27,7 +27,6 @@ module.exports = (function(parentCls){
     function cls(acct) {
         // super constructor call
         parentCls.call(this, acct);
-
         var folderDir = path.join('/tmp', '.' + OJ_NAME + '-' + acct.getUser());
         if (!fs.existsSync(folderDir)) {
             fs.mkdirSync(folderDir, { mode: '0777' });
@@ -37,7 +36,7 @@ module.exports = (function(parentCls){
         var token = null;
 
         this._login = function(callback) {
-          rest.post('http://dev.thehuxley.com/api/oauth/token', {
+	 rest.post('https://www.thehuxley.com/api/oauth/token', {
             data: {
               client_id: 'ui',
               grant_type: 'password',
@@ -73,7 +72,7 @@ module.exports = (function(parentCls){
             },
             function(subCallback) {
               var file = rest.file(fileDir, null, fs.statSync(fileDir).size, 'utf8', 'text/plain'); 
-              rest.post(`http://dev.thehuxley.com/api/v1/user/problems/${probNum}/submissions`, {
+              rest.post(`https://www.thehuxley.com/api/v1/user/problems/${probNum}/submissions`, {
                 accessToken: token,
                 multipart: true,
                 data: {
@@ -107,7 +106,7 @@ module.exports = (function(parentCls){
 
         this._send = _send;
         this._judge = function(submissions, callback) {
-          rest.get('http://dev.thehuxley.com/api/v1/submissions?max=20').on('complete', function(result) {
+          rest.get('https://www.thehuxley.com/api/v1/submissions?max=20').on('complete', function(result) {
             if (result instanceof Error) {
               return callback();
             }
@@ -126,7 +125,7 @@ module.exports = (function(parentCls){
 
       var iterate = function(i, cb) {
         var offset = (i-1)*maxPerPage;
-        rest.get(`http://dev.thehuxley.com/api/v1/problems?max=${maxPerPage}&offset=${offset}`).on('complete', function(result) {
+        rest.get(`https://www.thehuxley.com/api/v1/problems?max=${maxPerPage}&offset=${offset}`).on('complete', function(result) {
           for (var j = 0; j < result.length; j++) {
             Problem.createNew(result[j].id, result[j].name, OJ_NAME);
           }
@@ -142,7 +141,7 @@ module.exports = (function(parentCls){
         console.log('Finished loading up problems from ' + CONFIG.name);
       });
     }
-    //cls.fetchProblems();
+   // cls.fetchProblems();
 
     return cls;
 })(Adapter);

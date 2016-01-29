@@ -216,7 +216,8 @@ module.exports = (function(parentCls) {
         }
       });
     }
-    /*cls.fetchProblems(function() {
+    
+/*    cls.fetchProblems(function() {
       console.log("Finished loading codeforces problems");
     });//*/
 

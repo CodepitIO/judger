@@ -27,7 +27,7 @@ function OnlineJudge(type) {
   var sendQueue = async.queue(function(submission, callback) {
     var adapter = getNext();
     adapter.send(submission, function(err, id) {
-      if (err || !id) {
+	if (err || !id) {
         return submissionUtils.handleSubmissionErrors(err, submission, callback);
       }
       async.waterfall([
