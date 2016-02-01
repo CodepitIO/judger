@@ -179,20 +179,47 @@ module.exports = (function(parentCls) {
         }
     }
 
-    cls.importProblemContent = function(problemId, contestId, index, callback) {
+    var contentFetchQueue = async.queue(function(problem, callback) {
+      var contestId = problem.contestId;
+      var index = problem.index;
       request('http://' + CF_HOST + `/contest/${contestId}/problem/${index}`,
-        function(error, response, body) {
-          try {
-            var $ = cheerio.load(body);
-            var content = $('div.problemindexholder');
-            var title = content.find('.header > .title').html();
-            title = title.slice(3);
-            content.find('.header > .title').html(title);
-            Problem.saveProblemContent(problemId, content, callback);
-          } catch (err) {
-            return callback(err);
+        function(err, response, body) {
+          var error = err, content = null;
+          if (!error) {
+            try {
+              var $ = cheerio.load(body);
+              content = $('div.problemindexholder');
+              var title = content.find('.header > .title').html();
+              title = title.slice(3);
+              content.find('.header > .title').html(title);
+            } catch (err) {
+              error = err;
+            }
           }
+          return callback(error, content.html());
         });
+    }, 10);
+
+    cls.importProblemContentIfNeeded = function(problem, contestId, index, callback) {
+      if (problem.imported) {
+        return callback();
+      }
+
+      async.retry({times: 3, interval: 2000},
+        contentFetchQueue.push.bind(null, {contestId: contestId, index: index}),
+        function(err, content) {
+          if (err) {
+            // TODO: log to winston
+            console.log('Error importing problem ' + problem._id);
+            return callback();
+          } else {
+            Problem.saveProblemContent(problem._id, content, function() {
+              problem.imported = true;
+              problem.save(callback);
+            });
+          }
+        }
+      );
     }
 
     // TODO: stop as soon as we see a contest already inserted
@@ -201,13 +228,13 @@ module.exports = (function(parentCls) {
         if (result instanceof Error || result.status !== 'OK') {
           return callback(result, 0);
         } else {
-          result = result.result.problems;
+          result = result.result && result.result.problems || [];
           async.forEachOf(result, function(obj, _, cb) {
             var id = obj.contestId + obj.index;
             var name = obj.name;
             return Problem.createNew(id, name, OJ_NAME, function(err, problem) {
-              if (!err) {
-                return cls.importProblemContent(problem._id, obj.contestId, obj.index, cb);
+              if (!err && problem) {
+                return cls.importProblemContentIfNeeded(problem, obj.contestId, obj.index, cb);
               }
               return cb();
             });
@@ -215,8 +242,8 @@ module.exports = (function(parentCls) {
         }
       });
     }
-    
-/*    cls.fetchProblems(function() {
+
+    /*cls.fetchProblems(function() {
       console.log("Finished loading codeforces problems");
     });//*/
 

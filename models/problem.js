@@ -15,6 +15,7 @@ var problemSchema = mongoose.Schema({
   fullName: String,
   level: Number,
   tags: [String],
+  imported: {type: Boolean, default: false},
 });
 
 problemSchema.statics.filterProblems = function(pattern, page_limit, callback) {
@@ -29,11 +30,11 @@ problemSchema.statics.filterProblems = function(pattern, page_limit, callback) {
 
 problemSchema.statics.createNew = function(pid, pname, poj, cb) {
   var schema = this;
-  schema.count({
+  schema.findOne({
     id: pid,
     oj: poj
-  }, function(err, count) {
-    if (!err && count == 0) {
+  }, function(err, problem) {
+    if (!problem) {
       var fn = "[" + config[poj].name + " " + pid + "] " + pname;
       var newProblem = new schema({
         fullName: fn,
@@ -45,7 +46,7 @@ problemSchema.statics.createNew = function(pid, pname, poj, cb) {
       console.log("Criou o problema " + fn);
       newProblem.save(cb);
     } else if (cb) {
-      return cb(errors.ProblemAlreadyExists);
+      return cb(null, problem);
     }
   });
 }
