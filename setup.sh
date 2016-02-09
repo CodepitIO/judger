@@ -20,7 +20,7 @@ do
 done
 
 function bootstrap {
-  npm install
+  bash -c "npm install"
 }
 
 FILENAME=$PWD/.last_boot
@@ -38,9 +38,11 @@ COMPTIMEMILLIS=$(($TODAYMILLIS-$THRESHOLDMILLIS))
 if $FORCE || (($LASTTIME < $COMPTIMEMILLIS));
 then
   bootstrap
+  if [ $? -eq 0 ]
+  then
+    echo $TODAYMILLIS > $FILENAME
+  fi
 fi
-
-echo $TODAYMILLIS > $FILENAME
 
 if $START; then
   nodemon judger
