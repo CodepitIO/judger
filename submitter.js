@@ -1,7 +1,7 @@
 'use strict';
 
-const async = require('async');
-const PendingSubmission = require('./models/pending_submission');
+const async = require('async'),
+      PendingSubmission = require('./models/pending_submission');
 
 var pending = {};
 
@@ -22,7 +22,7 @@ module.exports = (function(ojs) {
               var oj = ojs[submissions[i].problemOj];
               pending[id] = true;
               oj.send(submissions[i], function(err) {
-		setImmediate(function() {
+		            setImmediate(function() {
                   delete pending[id];
                 });
               });

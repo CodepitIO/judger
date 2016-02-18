@@ -1,15 +1,27 @@
-const path = require('path');
-const async = require('async');
-const Browser = require('zombie');
-const cheerio = require('cheerio');
+'use strict';
 
-const util = require('../utils/util');
-const Adapter = require('../adapters/adapter');
+const path = require('path'),
+      async = require('async'),
+      Browser = require('zombie'),
+      assert = require('chai').assert,
+      cheerio = require('cheerio'),
+      format = require('util').format,
+      rest = require('restler'),
+      request = require('request'),
+      _ = require('underscore');
 
-const URI_HOST = "www.urionlinejudge.com.br";
-const LOGIN_PAGE_PATH = "/judge/login";
-const SUBMIT_PAGE_PATH = "/judge/pt/runs/add";
-const SUBMISSIONS_PAGE_PATH = "/judge/pt/runs";
+const util = require('../utils/util'),
+      Adapter = require('../adapters/adapter'),
+      RequestClient = require('../utils/requestClient'),
+      Problem = require('../models/problem'),
+      config = require('../config/defaults'),
+      errors = require('../utils/errors');
+
+const URI_HOST = "www.urionlinejudge.com.br",
+      LOGIN_PAGE_PATH = "/judge/pt/login",
+      SUBMIT_PAGE_PATH = "/judge/pt/runs/add",
+      SUBMISSIONS_PAGE_PATH = "/judge/pt/runs",
+      LAST_SUBMISSIONS_API = "/judge/maratonando/%s/runs/100";
 
 // Options and global variables
 const options = {
@@ -17,142 +29,137 @@ const options = {
   waitDuration: "15s"
 };
 
-const LOGIN_TEST_REGEX = /seu\s+progresso/i;
-const SUBMITTED_REGEX = /fila\s+para\s+ser\s+julgada/i;
+const LOGIN_TEST_REGEX = /Perfil/i,
+      SUBMITTED_REGEX = /fila\s+para\s+ser\s+julgada/i;
 
-const WORKER_BROWSERS = 1;
+const OJ_NAME = "uri",
+      CONFIG = config.oj[OJ_NAME],
+      WORKER_BROWSERS = CONFIG.submissionWorkersPerAdapter || 1;
 
-module.exports = (function(parentCls) {
+module.exports = (function(genAdapter) {
     // constructor
-    function cls(acct) {
-        // super constructor call
-        parentCls.call(this, acct);
+    function URIAdapter(account) {
 
-        this.browsers = [];
-        this.last = 0;
-        var that = this;
+      genAdapter.call(this, account);
+      var browsers = [];
+      var last = 0;
+      var that = this;
 
-        this._login = function(browser, callback) {
-          async.waterfall([
-            function(subCallback) {
-              browser.visit("http://" + URI_HOST + LOGIN_PAGE_PATH).then(subCallback);
-            },
-            function(subCallback) {
-              browser
-                .fill('#UserEmail', acct.getUser())
-                .fill('#UserPassword', acct.getPass())
-                .pressButton('input.send-sign-in')
-                .then(subCallback)
-                .catch(subCallback);
-            }
-          ], function(err) {
-            var html = browser.html() || '';
-            return callback(null, !!html.match(LOGIN_TEST_REGEX));
-          });
-        };
+      var _login = function(browser, callback) {
+        async.waterfall([
+          (subCallback) => {
+            browser.visit("http://" + URI_HOST + LOGIN_PAGE_PATH, subCallback);
+          },
+          (subCallback) => {
+            browser
+              .fill('#email', account.getUser())
+              .fill('#password', account.getPass())
+              .check('#remember-me')
+              .pressButton('input.send-green', subCallback);
+          }
+        ], (err) => {
+          var html = browser.html() || '';
+          return callback(null, !!html.match(LOGIN_TEST_REGEX));
+        });
+      }
 
-        this._getSubmissionId = function(browser, callback) {
-          browser.visit("http://" + URI_HOST + SUBMISSIONS_PAGE_PATH).then(function() {
-            try {
-              $ = cheerio.load(browser.html());
-              var submissionId = $('td.id').first().children().first().html();
-              if (!submissionId || !(submissionId.match(/[0-9]+/))) {
-                return callback({name: 'Falha de submissão', retry: true});
+      var _getSubmissionId = function(browser, callback) {
+        var submissionsApi = format(LAST_SUBMISSIONS_API, CONFIG.accessKey);
+        rest.get('http://' + URI_HOST + submissionsApi).on('complete', function(result) {
+          if (result instanceof Error) return callback(result);
+          var submission = _.find(result, function (x) { return x.UserID.toString() === account.getId() }) || {};
+          var submissionId = submission.SubmissionID.toString();
+          if (!submissionId || !submissionId.match(/[0-9]+/)) {
+            return callback({name: 'Falha de submissão', retry: true});
+          } else {
+            return callback(null, submissionId);
+          }
+        });
+      };
+
+      var _internalSend = function(browser, probNum, codeString, language, tryLogin, callback) {
+        async.waterfall([
+          (subCallback) => {
+            browser.visit("http://" + URI_HOST + SUBMIT_PAGE_PATH).then(subCallback);
+          },
+          (subCallback) => {
+            browser
+              .fill('#problem-id', probNum)
+              .select('#language-id', language)
+              .fill('#source-code', codeString)
+              .pressButton('input.send-green', subCallback);
+          }
+        ], (err) => {
+          var html = browser.html() || '';
+          if (err) {
+              return callback(err);
+          } else if (browser.location.pathname === LOGIN_PAGE_PATH) {
+              if (tryLogin) {
+                  return _login(browser, function(err, logged) {
+                      if (!logged) return callback({name: 'Não consegue logar.', retry: true});
+                      return _internalSend(browser, probNum, codeString, language, false, callback);
+                  });
               } else {
-                return callback(null, submissionId);
+                  return callback({name: 'Não consegue submeter.', retry: true});
               }
-            } catch (err) {
-
-            }
-          });
-        };
-
-        this._send = function(probNum, codeString, language, tryLogin, callback) {
-          codeString = codeString + '\n// ' + (new Date()).getTime();
-          var langVal = cls.getLangVal(util.getLang(language));
-          if (langVal < 0) {
-              return callback(new Error('Linguagem desconhecida.'));
+          } else if (html.match(SUBMITTED_REGEX)) {
+            return _getSubmissionId(browser, callback);
+          } else {
+            return callback({name: 'Submissão inválida.', retry: false});
           }
-          that.sendQueue.push({probNum: probNum, language: langVal, codeString: codeString}, callback);
-        };
+        });
+      };
 
-        this._internalSend = function(browser, probNum, codeString, language, tryLogin, callback) {
-          async.waterfall([
-            function(subCallback) {
-              browser.visit("http://" + URI_HOST + SUBMIT_PAGE_PATH).then(subCallback);
-            },
-            function(subCallback) {
-              try {
-                browser
-                  .fill('#RunProblemId', probNum)
-                  .select('#RunLanguageId', language)
-                  .fill('#RunSourceCode', codeString)
-                  .pressButton('input.send-submit')
-                  .then(subCallback);
-              } catch (err) {
-                subCallback(null);
-              }
-            }
-          ], function(err) {
-            var html = browser.html() || '';
-            if (err) {
-                return callback(err);
-            } else if (browser.location.pathname === LOGIN_PAGE_PATH) {
-                if (tryLogin) {
-                    return that._login(browser, function(err, logged) {
-                        if (!logged) return callback({name: 'Não consegue logar.', retry: true});
-                        return that._internalSend(browser, probNum, codeString, language, false, callback);
-                    });
-                } else {
-                    return callback({name: 'Não consegue submeter.', retry: true});
-                }
-            } else if (html.match(SUBMITTED_REGEX)) {
-              return that._getSubmissionId(browser, callback);
-            } else {
-              return callback({name: 'Submissão inválida.', retry: false});
-            }
-          });
-        };
-
-        this._getAvailableBrowser = function() {
-          for (var i = 0; i < that.browsers.length; i++) {
-            if (that.browsers[i]._available) {
-              that.browsers[i]._available = false;
-              return that.browsers[i];
-            }
+      var _getAvailableBrowser = function() {
+        for (var i = 0; i < browsers.length; i++) {
+          if (!browsers[i].tabs) {
+            browsers[i] = new Browser(options);
+            browser[i]._available = true;
           }
-          var browser = new Browser(options);
-          that.browsers.push(browser);
-          return browser;
-        };
+          if (browsers[i]._available) {
+            browsers[i]._available = false;
+            return browsers[i];
+          }
+        }
+        var browser = new Browser(options);
+        browsers.push(browser);
+        return browser;
+      };
 
-        this._releaseBrowser = function(browser) {
-          browser._available = true;
-        };
+      var _releaseBrowser = function(browser) {
+        browser._available = true;
+      };
 
-        this.sendQueue = async.queue(function (sub, callback) {
-          var browser = that._getAvailableBrowser();
-          that._internalSend(browser, sub.probNum, sub.codeString, sub.language, true, function(err, submissionId) {
-            that._releaseBrowser(browser);
-            return callback(err, submissionId);
-          });
-        }, WORKER_BROWSERS);
+      var sendQueue = async.queue((sub, callback) => {
+        var browser = _getAvailableBrowser();
+        _internalSend(browser, sub.probNum, sub.codeString, sub.language, true, (err, submissionId) => {
+          _releaseBrowser(browser);
+          return callback(err, submissionId);
+        });
+      }, WORKER_BROWSERS);
 
+      this._send = function(probNum, codeString, language, tryLogin, callback) {
+        codeString = codeString + '\n// ' + (new Date()).getTime();
+        var langVal = CONFIG.submitLang[language];
+        if (!langVal) return callback(errors.InvalidLanguage);
+        sendQueue.push({probNum: probNum, language: langVal, codeString: codeString}, callback);
+      };
+
+      this._judge = function(submissions, callback) {
+        var submissionsApi = format(LAST_SUBMISSIONS_API, CONFIG.accessKey);
+        rest.get('http://' + URI_HOST + submissionsApi).on('complete', function(result) {
+          if (result instanceof Error) return callback(result);
+          var verdict = {};
+          for (var i = 0; i < result.length; i++) {
+            verdict[result[i].SubmissionID] = result[i].Verdict;
+          }
+          for (var id in submissions) {
+            that.events.emit('verdict', id, verdict[id] || 'Submission error');
+          }
+          return callback();
+        });
+      };
     }
 
-    /**
-     * @param lang One of LANG_* constants
-     * @return SPOJ lang value or -1 if unacceptable.
-     */
-    cls.getLangVal = function(lang){
-        switch (lang) {
-            case util.LANG_C: return '1';
-            case util.LANG_CPP: return '2';
-            case util.LANG_CPP11: return '2';
-            case util.LANG_JAVA: return '3';
-        }
-        return -1;
-    };
-
-    return cls;
+    return URIAdapter;
 })(Adapter);

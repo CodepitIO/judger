@@ -21,16 +21,16 @@ module.exports = (function() {
         var CONFIG = config.oj[acct.type];
         
         this.send = function(submission, callback) {
-            sendQueue.push(submission, callback);
+          sendQueue.push(submission, callback);
         };
 
         this.judge = function() {
           async.whilst(
-            function() { return submissions.judging; },
-            function(callback) {
+            () => { return submissions.judging; },
+            (callback) => {
               setTimeout(that._judge.bind(null, submissions.map, callback), 3000);
             },
-            function(err) {}
+            (err) => {}
           );
         }
 

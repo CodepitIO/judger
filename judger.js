@@ -24,6 +24,7 @@ function loadAccounts(callback) {
       ojs[accts[i].type] = ojs[accts[i].type] || new OnlineJudge(accts[i].type);
       ojs[accts[i].type].add(accts[i]);
     }
+
     return callback(ojs);
   });
 }

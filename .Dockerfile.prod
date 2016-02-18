@@ -9,12 +9,23 @@ RUN apt-get update && \
     apt-get -y install curl && \
     curl -sL https://deb.nodesource.com/setup_5.x | sudo -E bash - && \
     apt-get -y install nodejs git-all build-essential vim
+RUN mkdir -p /var/log/supervisor
 
 RUN npm install -g grunt-cli nodemon bower pm2 forever
 
-# Define working directory
-RUN mkdir -p /judger
-WORKDIR /judger
-ADD . /judger
+ENV WD judger
 
-CMD /bin/bash
+# Install node_modules and bower_components
+COPY package.json /tmp/package.json
+RUN cd /tmp && npm install
+
+# Define working directory
+RUN mkdir -p /${WD}
+WORKDIR /${WD}
+ADD . /${WD}
+
+RUN cp -a /tmp/node_modules /${WD}/ && rm -rf /tmp
+
+COPY .supervisord.prod.conf /etc/supervisor/conf.d/supervisord.conf
+
+CMD ["/usr/bin/supervisord"]

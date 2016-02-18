@@ -27,21 +27,22 @@ function OnlineJudge(type) {
   var sendQueue = async.queue(function(submission, callback) {
     var adapter = getNext();
     adapter.send(submission, function(err, id) {
-	if (err || !id) {
+      console.log(err, id);
+      if (err || !id) {
         return submissionUtils.handleSubmissionErrors(err, submission, callback);
       }
       async.waterfall([
-        function(next) {
+        (next) => {
           Submission.count({oj_id: id}).exec(next);
         },
-        function(count, next) {
+        (count, next) => {
           if (count > 0) return next(errors.DuplicateOnlineJudgeID);
           var origSubmission = submission.originalId;
           origSubmission.oj_id = id;
           origSubmission.verdict = -1;
           origSubmission.save(next);
         }
-      ], function(err, result) {
+      ], (err, result) => {
         if (err) {
           return submissionUtils.handleSubmissionErrors(null, submission, callback);
         }

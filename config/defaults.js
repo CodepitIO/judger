@@ -60,6 +60,7 @@ module.exports = {
     //URI
     uri: {
       name: 'URI',
+      accessKey: '4AdtdxQIAwN3adQDaak4VaQVP1neHy',
       submitLang: {
         'java' : '3',
         'cpp' : '2',
@@ -74,11 +75,13 @@ module.exports = {
         'Time limit exceeded' : 3,
         'Wrong answer' : 2,
         'Presentation error' : 8,
-        'Accepted' : 1
+        'Accepted' : 1,
+        'Submission error': 12,
       },
       getUrl: function(id) {
         return 'https://www.urionlinejudge.com.br/repository/UOJ_' + id + '.html';
-      }
+      },
+      intervalPerAdapter: 6000 // 10 seconds
     },
 
     //SPOJBR
