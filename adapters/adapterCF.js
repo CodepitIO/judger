@@ -202,7 +202,7 @@ module.exports = (function(parentCls) {
 
     cls.importProblemContentIfNeeded = function(problem, contestId, index, callback) {
       if (problem.imported) {
-        return callback();
+	  return callback();
       }
 
       async.retry({times: 3, interval: 2000},
@@ -213,7 +213,8 @@ module.exports = (function(parentCls) {
             console.log('Error importing problem ' + problem._id);
             return callback();
           } else {
-            Problem.saveProblemContent(problem._id, content, function() {
+            Problem.saveProblemContent(problem._id, content, function(err) {
+              if (err) console.log(err);
               problem.imported = true;
               problem.save(callback);
             });
