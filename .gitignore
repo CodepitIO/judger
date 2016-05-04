@@ -3,9 +3,16 @@
 *.log
 *.sqlite?
 *.last_boot
-problems.txt
-problems/
-tests/
+
+### Generated
+
+/problems.txt
+/problems/
+/tests/
+
+### Production
+
+/.prod/
 
 ### Libs
 
@@ -47,4 +54,3 @@ __MACOSX
 ehthumbs.db
 thumbs.db
 Thumbs.db
-

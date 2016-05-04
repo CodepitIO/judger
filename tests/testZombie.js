@@ -62,7 +62,7 @@ var _getSubmissionId = function(browser, html, callback) {
   }
 }
 
-var _send = function(browser, probNum, codeString, language, tryLogin, callback) {
+var _send = function(browser, problemId, codeString, language, tryLogin, callback) {
   try {
     async.waterfall([
       function(subCallback) {
@@ -70,7 +70,7 @@ var _send = function(browser, probNum, codeString, language, tryLogin, callback)
       },
       function(subCallback) {
         browser
-          .fill('input[name="problemcode"]', probNum)
+          .fill('input[name="problemcode"]', problemId)
           .select('select[name="lang"]', language)
           .fill('textarea', codeString)
           .pressButton('input[value="Send"]')
@@ -84,7 +84,7 @@ var _send = function(browser, probNum, codeString, language, tryLogin, callback)
           if (tryLogin) {
               return _login(browser, function(err, logged) {
                   if (!logged) return callback(new Error('Can\'t login.'));
-                  return _send(browser, probNum, codeString, language, false, callback);
+                  return _send(browser, problemId, codeString, language, false, callback);
               });
           } else {
               return callback(new Error('Can\'t submit.'));
@@ -119,7 +119,7 @@ var sendQueue = async.queue(function (sub, callback) {
   var browser = _getAvailableBrowser();
   console.log(browsers.length);
   try {
-    _send(browser, sub.probNum, sub.codeString, sub.language, true, function(err, submissionId) {
+    _send(browser, sub.problemId, sub.codeString, sub.language, true, function(err, submissionId) {
       _releaseBrowser(browser);
       return callback(err, submissionId);
     });
@@ -140,7 +140,7 @@ var rd = readline.createInterface({
 });
 
 rd.on('line', function(line) {
-  sendQueue.push({probNum: "TEST", language: '41', codeString: line}, function(err, submissionId) {
+  sendQueue.push({problemId: "TEST", language: '41', codeString: line}, function(err, submissionId) {
     console.log(submissionId);    
   });
     /*if (line == 'send') {
