@@ -26,6 +26,6 @@ ADD . /${WD}
 
 RUN cp -a /tmp/node_modules /${WD}/ && rm -rf /tmp
 
-COPY .supervisord.prod.conf /etc/supervisor/conf.d/supervisord.conf
+COPY supervisord.prod.conf /etc/supervisor/conf.d/supervisord.conf
 
 CMD ["/usr/bin/supervisord"]

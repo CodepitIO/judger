@@ -1,3 +1,5 @@
+'use strict';
+
 module.exports = {
   //GENERAL
   scoreboardStatus: {
@@ -86,7 +88,6 @@ module.exports = {
       },
       intervalPerAdapter: 6000,
       submissionTTL: 60 * 60 * 1000,
-      importContent: true,
     },
 
     //SPOJBR
@@ -116,7 +117,6 @@ module.exports = {
       getProblemPath: (id) => {
         return '/problems/' + id;
       },
-      importContent: true,
     },
 
     //SPOJ
@@ -146,7 +146,6 @@ module.exports = {
       getProblemPath: (id) => {
         return '/problems/' + id;
       },
-      importContent: true,
     },
 
     //TIMUS
@@ -188,7 +187,6 @@ module.exports = {
         return '/print.aspx?space=1&num=' + id;
       },
       intervalPerAdapter: 6000,
-      importContent: true,
     },
 
     //LIVEARCHIVE
@@ -225,7 +223,9 @@ module.exports = {
       getProblemPath: (id) => {
         return '/external/' + Math.floor(id/100) + '/' + id + '.html';
       },
-      importContent: false,
+      getProblemPdfPath: (id) => {
+        return '/external/' + Math.floor(id/100) + '/p' + id + '.pdf';
+      },
     },
 
     //UVA
@@ -258,11 +258,13 @@ module.exports = {
         'Presentation error' : 8,
         'Accepted' : 1
       },
-      url: 'http://uva.onlinejudge.org',
+      url: 'https://uva.onlinejudge.org',
       getProblemPath: (id) => {
         return '/external/' + Math.floor(id/100) + '/' + id + '.html';
       },
-      importContent: false,
+      getProblemPdfPath: (id) => {
+        return '/external/' + Math.floor(id/100) + '/p' + id + '.pdf';
+      },
     },
 
     // CODEFORCES
@@ -300,7 +302,6 @@ module.exports = {
       getProblemPath: (id) => {
         return '/problemset/problem/' + id.slice(0,id.length-1) + '/' + id.slice(id.length-1);
       },
-      importContent: true,
     },
 
     // HUXLEY
@@ -331,7 +332,73 @@ module.exports = {
       getProblemPath: (id) => {
         return '/problem/' + id;
       },
-      importContent: true,
+    },
+
+    // CODEFORCES
+    cf: {
+      name: 'Codeforces',
+      submitLang: {
+        'c' : '10',
+        'java' : '36',
+        'cpp' : '1',
+        'pascal' : '4',
+        'cpp11' : '42',
+      	'python' : '31',
+      },
+      verdictId: {
+        'IN_QUEUE': -1,
+        'FAILED' : 2,
+        'OK' : 1,
+        'PARTIAL' : 2,
+        'COMPILATION_ERROR' : 4,
+        'RUNTIME_ERROR' : 5,
+        'WRONG_ANSWER' : 2,
+        'PRESENTATION_ERROR' : 8,
+        'TIME_LIMIT_EXCEEDED' : 3,
+        'MEMORY_LIMIT_EXCEEDED' : 6,
+        'IDLENESS_LIMIT_EXCEEDED' : 3,
+        'SECURITY_VIOLATED' : 10,
+        'CRASHED' : 5,
+        'INPUT_PREPARATION_CRASHED' : 11,
+        'CHALLENGED' : 2,
+        'SKIPPED' : 11,
+        'TESTING' : -3,
+        'REJECTED' : 11,
+      },
+      url: 'http://codeforces.com',
+      getProblemPath: (id) => {
+        return '/problemset/problem/' + id.slice(0,id.length-1) + '/' + id.slice(id.length-1);
+      },
+    },
+
+    // CODECHEF
+    codechef: {
+      name: 'CodeChef',
+      submitLang: {
+        'c' : '11',
+        'java' : '10',
+        'cpp' : '1',
+        'pascal' : '2',
+        'cpp11' : '44',
+        'python' : '4',
+      },
+      verdictId: {
+        'WAITING' : -3,
+        'CORRECT' : 1,
+        'EMPTY_ANSWER' : 2,
+        'WRONG_ANSWER' : 2,
+        'TIME_LIMIT_EXCEEDED' : 3,
+        'COMPILATION_ERROR' : 4,
+        'RUNTIME_ERROR' : 5,
+        'PRESENTATION_ERROR' : 8,
+        'WRONG_FILE_NAME' : 11,
+        'EMPTY_TEST_CASE' : 11,
+        'HUXLEY_ERROR' : 11,
+      },
+      url: 'https://www.codechef.com',
+      getProblemPath: (id) => {
+        return `/problems/${id}`;
+      },
     },
   },
 };

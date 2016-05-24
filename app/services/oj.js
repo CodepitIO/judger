@@ -44,14 +44,14 @@ module.exports = (function() {
           if (count > 0) return next(Errors.DuplicateOnlineJudgeID);
           submission.verdict = SubmissionStatus.ON_JUDGE_QUEUE;
           job.progress({oj_id: submission.oj_id, verdict: SubmissionStatus.ON_JUDGE_QUEUE});
-          judging = true;
           async.timeout((callback) => {
-            adapter.judge(submission, job.progress, callback);
+            judging = true;
+            adapter.addSubmissionHandler(submission, job.progress, callback);
           }, Settings.submissionTTL || 10 * 60 * 1000)(next);
         }
       ], (err) => {
         if (judging) {
-          adapter.stopJudge(submission);
+          adapter.removeSubmissionHandler(submission);
         }
         if (err == Errors.InternalError) {
           job.progress({oj_id: -1, verdict: SubmissionStatus.INTERNAL_ERROR});
@@ -61,6 +61,12 @@ module.exports = (function() {
         }
         return done();
       });
+    }
+
+    this.login = () => {
+      for (let i in adapters) {
+        adapters[i].login();
+      }
     }
 
     this.start = () => {

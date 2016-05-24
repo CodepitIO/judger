@@ -1,16 +1,18 @@
 'use strict';
 
-const path    = require('path'),
-      async   = require('async'),
-      Browser = require('zombie'),
-      assert  = require('assert'),
-      cheerio = require('cheerio'),
-      util   = require('util');
+const path      = require('path'),
+      async     = require('async'),
+      Browser   = require('zombie'),
+      assert    = require('assert'),
+      cheerio   = require('cheerio'),
+      util      = require('util'),
+      jsrender  = require('jsrender');
 
 const Adapter       = require('../adapters/adapter'),
       Defaults      = require('../config/defaults'),
       Errors        = require('../utils/errors'),
-      RequestClient = require('../utils/requestClient');
+      RequestClient = require('../utils/requestClient'),
+      Util          = require('../utils/util');
 
 const LOGIN_PATH  = path.join(__dirname, "resources", "spoj_login.html"),
       SUBMIT_PATH = path.join(__dirname, "resources", "spoj_submit.html");
@@ -132,31 +134,64 @@ module.exports = (function(parentCls) {
 
     const LAST_PAGE_PATTERN = /start=(\d+)/;
     const PROBLEM_ID_PATTERN = /^\/problems\/(.+)/;
+    const METADATA_PATTERN = /^(?:.+)?:\s*(.+)/i;
+    const TIMELIMIT_PATTERN = /([\d.,]+)/;
+    const MEMOLIMIT_PATTERN = /([\d.,]+)\s*(\w+)/;
+
+    const tmplPath = './app/adapters/resources/spoj_template.html';
+    const tmpl = jsrender.templates(tmplPath);
 
     const client = new RequestClient('http', HOST);
+
+    function getMetadata(elem) {
+      try {
+        return elem.text().match(METADATA_PATTERN)[1];
+      } catch (err) {
+        return null;
+      }
+    }
 
     obj.import = (problem, callback) => {
       let url = Defaults.oj[TYPE].getProblemPath(problem.id);
       client.get(url, (err, res, html) => {
         if (err) return callback(err);
-        let content;
+        let data = {};
         try {
+          html = html.replace(/<=/g, '&lt;=');
           let $ = cheerio.load(html);
-          let header = $('#problem-meta tbody').children();
-          let tl = header.eq(2);
-          let ml = header.eq(4);
-          let rs = header.eq(7);
-          content = $('#problem-body');
-          content = '<table class="spoj-problem-info">' +
-                      '<tbody>' +
-                        tl + ml + rs +
-                      '</tbody>' +
-                    '</table>' +
-                    content.html();
+          Util.adjustImgSrcs($, TYPE);
+          $('h3').replaceWith(function () {
+            return "<div class='section-title'>" + $(this).html() + "</div>";
+          });
+          let header = $('#problem-meta tbody').children(), match;
+          let tl = getMetadata(header.eq(2));
+          if (tl && (match = tl.match(TIMELIMIT_PATTERN))) {
+            data.timelimit = parseFloat(match[1]);
+          }
+          let ml = getMetadata(header.eq(4));
+          if (ml && (match = ml.match(MEMOLIMIT_PATTERN))) {
+            data.memorylimit = `${match[1]} ${match[2]}`;
+          }
+          let rs = getMetadata(header.eq(7));
+          if (rs) {
+            data.source = rs;
+          }
+          let description = $('#problem-body');
+          description.find('pre').each((i, item) => {
+            item = $(item);
+            let data = item.html();
+            data = data.replace(/\r/g, '');
+            data = data.replace(/\n/g, '<br>');
+            data = data.replace(/^(?:<br>)*/g, '');
+            data = data.replace(/(?:<br>)*$/g, '');
+            data = data.replace(/<strong>\s*<br>/, '<strong>');
+            item.html(data);
+          });
+          data.html = tmpl.render({description: description.html()});
         } catch (err) {
           return callback(err);
         }
-        return callback(null, content);
+        return callback(null, data);
       });
     }
 

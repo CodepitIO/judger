@@ -24,7 +24,7 @@ module.exports = (function() {
     let judgeSet = {};
     let judgeCount = 0;
 
-    this.judge = (submission, progress, callback) => {
+    this.addSubmissionHandler = (submission, progress, callback) => {
       judgeCount++;
       judgeSet[submission.oj_id] = {
         submission: submission,
@@ -32,17 +32,20 @@ module.exports = (function() {
         callback: callback
       };
     }
-    this.stopJudge = (submission) => {
+    this.removeSubmissionHandler = (submission) => {
       judgeCount--;
       delete judgeSet[submission.oj_id];
     }
 
-    this.start = () => {
+    this.login = () => {
       async.retry({times: 5, interval: 2000}, this._login, (err) => {
         if (err) {
           console.log(`Unable to log to ${acct.getType()} with account ${acct.getUser()}.`);
         }
       });
+    }
+
+    this.start = () => {
       async.forever(
         (next) => {
           if (judgeCount === 0) return setTimeout(next, 1000);
@@ -111,10 +114,14 @@ module.exports = (function() {
     function getOrCreateQueue(type) {
       if (!importQueues[type]) {
         importQueues[type] = async.queue((problem, callback) => {
+          console.log('> ', problem.id, problem.oj);
           if (subClasses[type].import) {
-            return subClasses[type].import(problem, callback);
+            // We wait at most 10 seconds to import a problem
+            return async.timeout((callback) => {
+              subClasses[type].import(problem, callback);
+            }, 2 * 60 * 1000)(callback);
           }
-          return async.setImmediate(callback);
+          return async.setImmediate(callback, Errors.NoImportForOJ);
         }, Defaults.oj[type].maxImportWorkers || 3);
       }
       return importQueues[type];

@@ -5,12 +5,14 @@ const path    = require('path'),
       Browser = require('zombie'),
       assert  = require('assert'),
       cheerio = require('cheerio'),
-      util    = require('util');
+      util    = require('util'),
+      _       = require('lodash');
 
 const Adapter       = require('../adapters/adapter'),
       Defaults      = require('../config/defaults'),
       Errors        = require('../utils/errors'),
-      RequestClient = require('../utils/requestClient');
+      RequestClient = require('../utils/requestClient'),
+      Util          = require('../utils/util');
 
 const HOST              = "codeforces.com",
       LOGIN_PAGE_PATH   = "/enter",
@@ -141,21 +143,49 @@ module.exports = (function(parentCls) {
 
     const client = new RequestClient('http', HOST);
 
+    const TIMELIMIT_PATTERN = /([\d.,]+)?\s*seconds?/i;
+
     obj.import = (problem, callback) => {
       let url = Defaults.oj[TYPE].getProblemPath(problem.id);
       client.get(url, (err, res, html) => {
         if (err) return callback(err);
-        let content;
+        let data = {};
         try {
+          html = html.replace(/<=/g, '&lt;=');
           let $ = cheerio.load(html);
-          content = $('div.problemindexholder');
+          Util.adjustImgSrcs($, TYPE);
+          let content = $('div.problemindexholder');
+
+          let inp = content.find('.input-file');
+          inp.find('.property-title').remove();
+          if (!_.includes(inp.html(), "standard")) data.inputFile = inp.text();
+          let out = content.find('.output-file');
+          out.find('.property-title').remove();
+          if (!_.includes(out.html(), "standard")) data.outputFile = out.text();
+
+          let match;
+          let tl = content.find('.time-limit');
+          tl.find('.property-title').remove();
+          if (match = tl.text().match(TIMELIMIT_PATTERN)) {
+            data.timelimit = parseFloat(match[1]);
+          }
+
+          let ml = content.find('.memory-limit');
+          if (ml) {
+            ml.find('.property-title').remove();
+            ml.text(ml.text().replace(/\s*megabytes?/, ' MB'));
+            ml.text(ml.text().replace(/\s*kilobytes?/, ' KB'));
+            ml.text(ml.text().replace(/\s*gigabytes?/, ' GB'));
+            data.memorylimit = ml.text();
+          }
+
           content.removeAttr('problemindex');
-          content.find('.header > .title').remove();
+          content.find('.header').remove();
+          data.html = content.html();
         } catch (err) {
           return callback(err);
         }
-        require('fs').writeFileSync('test.html', content);
-        //return callback(null, content.html());
+        return callback(null, data);
       });
     }
 

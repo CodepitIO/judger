@@ -3,9 +3,12 @@
 const cheerio = require('cheerio'),
       assert  = require('assert'),
       async   = require('async'),
-      path    = require('path');
+      path    = require('path'),
+      util    = require('util'),
+      _       = require('lodash');
 
 const Adapter       = require('../adapters/adapter'),
+      Defaults      = require('../config/defaults'),
       Errors        = require('../utils/errors'),
       RequestClient = require('../utils/requestClient'),
       Util          = require('../utils/util');
@@ -133,6 +136,65 @@ module.exports = ((parentCls) => {
     const VOLUMES = ["/index.php?option=com_onlinejudge&Itemid=8&category=1"];
     const PROBLEM_PATTERN = /^(\d+)\s*-\s*(.*)/i;
     const client = new RequestClient('https', HOST);
+    const PDF_FROM_ID = 500;
+
+    const PROBLEM_METADATA_API = "https://icpcarchive.ecs.baylor.edu/uhunt/api/p/num/%s";
+
+    function getContent(data, html, id) {
+      html = html.replace(/<=/g, '&lt;=');
+      let $ = cheerio.load(html);
+      $('img').each((i, elem) => {
+        elem = $(elem);
+        let vol = parseInt(id / 100);
+        let imgUrl = `${Defaults.oj[TYPE].url}/external/${vol}/${elem.attr('src')}`;
+        elem.attr('src', imgUrl);
+      });
+      $('table[bgcolor="#0060F0"]').first().remove();
+      $('h1').first().remove();
+      $('h2').each((i, item) => {
+        $(item).html($(item).text());
+      });
+      let adr = $('address');
+      if (adr) {
+        adr.children().each((i, item) => {
+          let text = _.trim($(item).text());
+          if (text.length > 0) {
+            if (data.source) data.source += ' ' + text;
+            else data.source = text;
+          }
+        });
+        adr.prev().remove();
+        adr.remove();
+      }
+      data.html = '<div class="problem-statement">' + $.html() + '</div>';
+    }
+
+    obj.import = (problem, callback) => {
+      let metadataUrl = util.format(PROBLEM_METADATA_API, problem.id);
+      let problemUrl = Defaults.oj[TYPE].getProblemPath(problem.id);
+      async.parallel({
+        meta: (next) => {
+          return client.get(metadataUrl, {json: true}, next);
+        },
+        body: (next) => {
+          return client.get(problemUrl, next);
+        }
+      }, (err, results) => {
+        if (err) return callback(err);
+        let data = {};
+        try {
+          let tl = results.meta[1] && results.meta[1].rtl || 3000;
+          data.timelimit = tl / 1000.0;
+          data.memorylimit = '128 MB';
+          let html = results.body[1];
+          data.isPdf = (_.includes(html, "HTTP-EQUIV") && html.length <= 200);
+          if (!data.isPdf) getContent(data, html, problem.id);
+        } catch (err) {
+          return callback(err);
+        }
+        return callback(null, data);
+      });
+    }
 
     function reduceProblems(problems, href, callback) {
       client.get(href, (err, res, html) => {

@@ -7,7 +7,7 @@ const Dbs     = require('./app/services/dbs'),
       Fetcher = require('./app/services/fetcher');
 
 if (process.env.NODE_ENV === 'development') {
-
+  //const test = require('./tests/testCODECHEF');
 }
 
 function start() {

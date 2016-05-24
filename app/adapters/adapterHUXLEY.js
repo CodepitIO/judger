@@ -147,6 +147,7 @@ module.exports = (function(parentCls){
 
       const PROBLEM_PATH_UNF = "/api/v1/problems/%s";
       const EXAMPLES_PATH_UNF = "/api/v1/problems/%s/examples?max=10";
+
       const tmplPath = './app/adapters/resources/huxley_template.html';
       const tmpl = jsrender.templates(tmplPath);
 
@@ -162,24 +163,40 @@ module.exports = (function(parentCls){
           }
         }, (err, results) => {
           if (err) return callback(err);
-          let meta = results.meta[1];
-          let tests = results.tests[1];
-          _.map(tests, (obj) => {
-            obj.input = obj.input.replace(/\r?\n/g, '<br>');
-            obj.output = obj.output.replace(/\r?\n/g, '<br>');
-            return obj;
-          });
-          let content = tmpl.render({
-            timelimit: meta.timeLimit + ' segundos',
-            source: meta.source,
-            description: meta.description,
-            inputFormat: meta.inputFormat,
-            outputFormat: meta.outputFormat,
-            tests: tests
-          });
-          return callback(null, content);
-        });
+          let data = {};
+          try {
+            let meta = results.meta[1];
+            let tests = results.tests[1];
+            if (meta.status === '404') {
+              return callback(Errors.ResourceNotFound);
+            }
+            _.map(tests, (obj) => {
+              obj.input = obj.input || '';
+              obj.input = obj.input.replace(/\r?\n/g, '<br>');
+              obj.output = obj.output || '';
+              obj.output = obj.output.replace(/\r?\n/g, '<br>');
+              return obj;
+            });
+            data.timelimit = meta.timeLimit;
+            if (meta.source) data.source = 'Fonte: ' + meta.source;
 
+            meta.description = meta.description || '';
+            meta.description = meta.description.replace(/<=/g, '&lt;=');
+            meta.inputFormat = meta.inputFormat || '';
+            meta.inputFormat = meta.inputFormat.replace(/<=/g, '&lt;=');
+            meta.outputFormat = meta.outputFormat || '';
+            meta.outputFormat = meta.outputFormat.replace(/<=/g, '&lt;=');
+            data.html = tmpl.render({
+              description: meta.description,
+              inputFormat: meta.inputFormat,
+              outputFormat: meta.outputFormat,
+              tests: tests
+            });
+          } catch (err) {
+            return callback(err);
+          }
+          return callback(null, data);
+        });
       }
 
       function processProblems(problemsPath, problems, callback) {
@@ -187,7 +204,7 @@ module.exports = (function(parentCls){
           try {
             data = JSON.parse(data);
           } catch (e) {
-            return next(e);
+            return callback(e);
           }
           for (let i = 0; i < data.length; i++) {
             problems.push({

@@ -13,20 +13,19 @@ const Adapter       = require('../adapters/adapter'),
       RequestClient = require('../utils/requestClient'),
       Util          = require('../utils/util');
 
-const HOST              = "uva.onlinejudge.org",
-      SUBMIT_PAGE_PATH  = "/index.php?option=com_onlinejudge&Itemid=25",
-      SUBMIT_PATH       = "/index.php?option=com_onlinejudge&Itemid=25&page=save_submission",
-      SUBMISSIONS_PATH  = "/index.php?option=com_onlinejudge&Itemid=9";
+const HOST              = "www.codechef.com",
+      SUBMIT_PATH       = "/submit/%s";
 
-const LOGGED_PATTERN          = /My\s+Account/i,
-      LOGIN_FORM_PATTERN      = /<form([^>]+?id\s*=\s*["']?\w*mod_loginform[^>]*)>((?:.|\r|\n)*?)<\/form>/i,
-      NOT_AUTHORIZED_PATTERN  = /not\s+authori[zs]ed/i;
+const LOGGED_PATTERN          = /edit\s+profile/i,
+      LIMIT_CON_PATTERN       = /maximum\s+number\s+of\s+simultaneous\s+sessions/i,
+      LOGIN_FORM_PATTERN      = /<form([^>]+?id\s*=\s*["']?\w*new-login-form[^>]*)>((?:.|\r|\n)*?)<\/form>/i,
+      SUBMIT_FORM_PATTERN      = /<form([^>]+?id\s*=\s*["']?\w*problem-submission[^>]*)>((?:.|\r|\n)*?)<\/form>/i;
 
 const TYPE = /^adapter(\w+)/i.exec(path.basename(__filename))[1].toLowerCase();
 
 module.exports = ((parentCls) => {
 
-  function AdapterUVA(acct) {
+  function AdapterCODECHEF(acct) {
     parentCls.call(this, acct);
 
     const client = new RequestClient('https', HOST);
@@ -40,8 +39,8 @@ module.exports = ((parentCls) => {
           let f, opts;
           try {
             f = Util.parseForm(LOGIN_FORM_PATTERN, html);
-            f.data[f.userField] = acct.getUser();
-            f.data[f.passField] = acct.getPass();
+            f.data['name'] = acct.getUser();
+            f.data['pass'] = acct.getPass();
             opts = {
               followAllRedirects: true,
               headers: { Referer: 'https://' + HOST, },
@@ -53,6 +52,7 @@ module.exports = ((parentCls) => {
         }
       ], (err, res, html) => {
         html = html || '';
+        // TODO: deal with multiple logged sessions
         if (!html.match(LOGGED_PATTERN)) {
           return callback(Errors.LoginFail);
         }
@@ -63,7 +63,43 @@ module.exports = ((parentCls) => {
     this._login = login;
 
     function send(submission, retry, callback) {
-      let data = {
+      console.log('oi');
+      async.waterfall([
+        (next) => {
+          client.get(util.format(SUBMIT_PATH, submission.problemId), next);
+        },
+        (res, html, next) => {
+          let f, opts;
+          try {
+            f = Util.parseForm(SUBMIT_FORM_PATTERN, html);
+            console.log(f);
+            if (!f) return next(Errors.SubmissionFail);
+            opts = {
+              followAllRedirects: true,
+              headers: { Referer: 'https://' + HOST, },
+            };
+            f.data.program = submission.code;
+            f.data.filename = '';
+            f.data.language = submission.language;
+          } catch (e) {
+            console.log(e);
+            return next(Errors.SubmissionFail);
+          }
+          console.log(f);
+          return client.post(f.action, f.data, opts, next);
+        }
+      ], (err, a, b, c) => {
+        if (err) {
+          if (!retry) return callback(err);
+          return login((err) => {
+            if (err) return callback(err);
+            return send(submission, false, callback);
+          });
+        }
+        console.log(err);
+        require('fs').writeFileSync('stor.html', b);
+      });
+/*      let data = {
         localid: submission.problemId,
         code: submission.code,
         language: submission.language,
@@ -83,10 +119,7 @@ module.exports = ((parentCls) => {
           if (!retry) {
             return callback(Errors.SubmissionFail);
           } else {
-            return login((err) => {
-              if (err) return callback(err);
-              return send(submission, false, callback);
-            });
+
           }
         }
         let id;
@@ -97,7 +130,7 @@ module.exports = ((parentCls) => {
           return callback(Errors.SubmissionFail);
         }
         return callback(null, id);
-      });
+      });*/
     };
 
     this._send = (submission, callback) => {
@@ -241,7 +274,7 @@ module.exports = ((parentCls) => {
     obj.fetchProblems = (callback) => {
       async.reduce(VOLUMES, [], reduceVolumes, callback);
     }
-  })(AdapterUVA);
+  })(AdapterCODECHEF);
 
-  return AdapterUVA;
+  return AdapterCODECHEF;
 })(Adapter);

@@ -8,19 +8,33 @@ let problemSchema = mongoose.Schema({
   name: String,
   oj: String,
   url: String,
+  originalUrl: String,
   fullName: String,
   imported: {type: Boolean, default: false},
   importTries: {type: Number, default: 0},
   html: String,
+  source: String,
+  timelimit: Number,
+  memorylimit: String,
+  inputFile: String,
+  outputFile: String,
+  isPdf: {type: Boolean, default: false},
 });
 
 problemSchema.post('save', (problem, next) => {
-  if (problem.fullName || problem.url) return next();
+  if (problem.fullName && problem.url && problem.originalUrl) return next();
   let oj = problem.oj;
   let id = problem.id;
   let name = problem.name;
   problem.fullName = "[" + Defaults[oj].name + " " + id + "] " + name;
-  problem.url = Defaults[oj].url + Defaults[oj].getProblemPath(id);
+  if (!problem.url) {
+    problem.url = Defaults[oj].url + Defaults[oj].getProblemPath(id);
+  }
+  if (problem.isPdf) {
+    problem.originalUrl = Defaults[oj].url + Defaults[oj].getProblemPdfPath(id);
+  } else {
+    problem.originalUrl = Defaults[oj].url + Defaults[oj].getProblemPath(id);
+  }
   problem.save(next);
 });
 

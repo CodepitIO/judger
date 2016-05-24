@@ -1,12 +1,9 @@
 <div class="ttypography">
   <div class="problem-statement">
-    <div class="header">
-      <div class="time-limit"><div class="property-title">tempo limite</div>{{:timelimit}}</div>
-      <div class="source"><div class="property-title">fonte</div>{{:source}}</div>
-    </div>
     <div>
       {{:description}}
     </div>
+    <p></p>
     <div class="input-specification">
       <div class="section-title">Entrada</div>
       {{:inputFormat}}
@@ -15,6 +12,7 @@
       <div class="section-title">Saída</div>
       {{:outputFormat}}
     </div>
+    {{if tests.length}}
     <div class="sample-tests">
       <div class="section-title">Exemplos de teste</div>
       <div class="sample-test">
@@ -25,10 +23,11 @@
         </div>
         <div class="output">
           <div class="title">saída</div>
-          <pre>{{:output}}</pre></div>
+          <pre>{{:output}}</pre>
         </div>
         {{/for}}
       </div>
     </div>
+    {{/if}}
   </div>
 </div>

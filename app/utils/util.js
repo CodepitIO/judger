@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const errors = require('./errors');
+const Defaults = require('../config/defaults');
 
 const LANG_C      = 1;
 const LANG_JAVA   = 2;
@@ -48,6 +49,21 @@ obj.getLangName = function(lang){
 
     return '?';
 };
+
+obj.adjustImgSrcs = function($, oj) {
+  $('img').each((i, elem) => {
+    elem = $(elem);
+    let link = elem.attr('src');
+    if (link[0] === '/' || link[0] === '.') {
+      let imgSrc = Defaults.oj[oj].url;
+      if (link[0] === '.') imgSrc += '/';
+      imgSrc += link;
+      elem.attr('src', imgSrc);
+    } else {
+      elem.attr('src', link.replace('spoj.pl', 'spoj.com'));
+    }
+  });
+}
 
 /**
  * @return File extension without the dot; empty string if none.

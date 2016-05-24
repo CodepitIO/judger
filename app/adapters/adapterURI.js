@@ -9,7 +9,8 @@ const path    = require('path'),
 const Adapter       = require('../adapters/adapter'),
       RequestClient = require('../utils/requestClient'),
       Errors        = require('../utils/errors'),
-      Defaults      = require('../config/defaults');
+      Defaults      = require('../config/defaults'),
+      Util          = require('../utils/util');
 
 const HOST                  = "www.urionlinejudge.com.br",
       LOGIN_PAGE_PATH       = "/judge/pt/login",
@@ -122,21 +123,28 @@ module.exports = (function(parentCls) {
 
     const client = new RequestClient('https', HOST);
 
+    const TIMELIMIT_PATTERN = /Timelimit:\s+([\d.,]+)/;
+
     obj.import = (problem, callback) => {
       let url = Defaults.oj[TYPE].getProblemPath(problem.id);
       client.get(url, (err, res, html) => {
         if (err) return callback(err);
-        let content;
+        let data = {};
         try {
+          html = html.replace(/<=/g, '&lt;=');
           let $ = cheerio.load(html);
-          $('head').remove();
-          $('div.header span').remove();
-          $('div.header h1').remove();
-          content = $.html();
+          Util.adjustImgSrcs($, TYPE);
+          $('script').remove();
+          data.source = $('div.header p').html();
+          let tl = $.html().match(TIMELIMIT_PATTERN);
+          if (tl) data.timelimit = parseFloat(tl[1]);
+          //data.memorylimit = '512 MB';
+          $('div.header').remove();
+          data.html = '<div class="problem-statement">' + $('body').html(); + '</div>';
         } catch (err) {
           return callback(err);
         }
-        return callback(null, content);
+        return callback(null, data);
       });
     }
 

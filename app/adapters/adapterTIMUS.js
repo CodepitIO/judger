@@ -9,7 +9,8 @@ const cheerio = require('cheerio'),
 const Adapter       = require('../adapters/adapter'),
       Defaults      = require('../config/defaults'),
       Errors        = require('../utils/errors'),
-      RequestClient = require('../utils/requestClient');
+      RequestClient = require('../utils/requestClient'),
+      Util          = require('../utils/util');
 
 const HOST             = "acm.timus.ru",
       SUBMIT_PAGE_PATH = "/submit.aspx",
@@ -119,20 +120,35 @@ module.exports = (function(parentCls){
 
     const client = new RequestClient('http', HOST);
 
+    const TIMELIMIT_PATTERN = /time\s*limit:\s*([\d.,]+?)\s*\w/i;
+    const MEMOLIMIT_PATTERN = /memory\s*limit:\s*([\d\w\s]+)/i;
+
     obj.import = (problem, callback) => {
       let url = Defaults.oj[TYPE].getProblemPath(problem.id);
       client.get(url, (err, res, html) => {
         if (err) return callback(err);
-        let content;
+        let data = {};
         try {
+          html = html.replace(/<=/g, '&lt;=');
           let $ = cheerio.load(html);
-          $('head').remove();
-          $('h2.problem_title').remove();
-          content = $.html();
+          Util.adjustImgSrcs($, TYPE);
+          let header = $('.problem_limits');
+          let match;
+          if (match = header.html().match(TIMELIMIT_PATTERN)) {
+            data.timelimit = parseFloat(match[1]);
+          }
+          if (match = header.html().match(MEMOLIMIT_PATTERN)) {
+            data.memorylimit = match[1];
+          }
+          let source = $('.problem_source');
+          source.find('b').remove();
+          if (source && source.text()) data.source = source.text();
+          source.remove();
+          data.html = '<div class="timus-problem">' + $('#problem_text').html() + '</div>';
         } catch (err) {
           return callback(err);
         }
-        return callback(null, content);
+        return callback(null, data);
       });
     }
 

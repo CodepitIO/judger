@@ -20,7 +20,7 @@ module.exports = (() => {
     });
   }
 
-  function loadOnlineJudgeAccounts(callback) {
+  function loadJudgersAccounts(callback) {
     OjAccount.find().exec((err, accts) => {
       for (var i = 0; i < accts.length; i++) {
         if (!ojs[accts[i].type]) {
@@ -30,6 +30,13 @@ module.exports = (() => {
       }
       return callback();
     });
+  }
+
+  function loginJudgers(callback) {
+    for (var name in ojs) {
+      ojs[name].login();
+    }
+    return callback();
   }
 
   function startJudgers(callback) {
@@ -42,7 +49,8 @@ module.exports = (() => {
   this.start = (callback) => {
     reloadActiveTasks();
     async.series([
-      loadOnlineJudgeAccounts,
+      loadJudgersAccounts,
+      loginJudgers,
       startJudgers,
     ], () => {
       return callback(null, ojs);
