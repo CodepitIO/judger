@@ -114,7 +114,6 @@ module.exports = (function() {
     function getOrCreateQueue(type) {
       if (!importQueues[type]) {
         importQueues[type] = async.queue((problem, callback) => {
-          console.log('> ', problem.id, problem.oj);
           if (subClasses[type].import) {
             // We wait at most 10 seconds to import a problem
             return async.timeout((callback) => {

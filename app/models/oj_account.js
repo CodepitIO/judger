@@ -9,7 +9,6 @@ let ojAccountSchema = mongoose.Schema({
   id: String,
   accessKey: String,
 });
-ojAccountSchema.set('autoIndex', false);
 
 ojAccountSchema.methods.getUser = function() {
   return this.user;

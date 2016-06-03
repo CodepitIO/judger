@@ -19,7 +19,7 @@ module.exports = (() => {
   function importProblem(problem, callback) {
     ojs[problem.oj].import(problem, (err, data) => {
       problem.fullName = problem.originalUrl = null;
-      if (!err && data) {
+      if (!err && data && ((data.html && data.html.length > 50) || data.isPdf)) {
         problem.imported = !data.isPdf;
         for (var key in data) {
           problem[key] = data[key];
@@ -116,8 +116,9 @@ module.exports = (() => {
 
   this.start = (_ojs, callback) => {
     ojs = _ojs;
-    async.series([
+    async.waterfall([
       loadProblems,
+      importProblemSet,
       startDailyFetcher,
     ], callback);
   };
