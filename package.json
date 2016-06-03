@@ -1,6 +1,6 @@
 {
   "name": "mrt-judger",
-  "description": "Cloud Judger for an Automated Contest Driven Online Judge",
+  "description": "Integrated judger for Codepit",
   "version": "1.0.0",
   "author": "Gustavo Stor",
   "engines": {
