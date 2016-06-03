@@ -14,10 +14,10 @@ const Adapter       = require('../adapters/adapter'),
       RequestClient = require('../utils/requestClient'),
       Util          = require('../utils/util');
 
-const LOGIN_PATH  = path.join(__dirname, "resources", "spoj_login.html"),
-      SUBMIT_PATH = path.join(__dirname, "resources", "spoj_submit.html");
+const LOGIN_PATH  = path.join(__dirname, "resources", "spojbr_login.html"),
+      SUBMIT_PATH = path.join(__dirname, "resources", "spojbr_submit.html");
 
-const HOST        = "www.spoj.com",
+const HOST        = "br.spoj.com",
       STATUS_PATH = "/status";
 
 const LOGIN_TEST_ANTI_REGEX     = /sign\s+up/i,
@@ -28,7 +28,7 @@ const TYPE = /^adapter(\w+)/i.exec(path.basename(__filename))[1].toLowerCase();
 
 module.exports = (function(parentCls) {
 
-  function AdapterSPOJ(acct) {
+  function AdapterSPOJBR(acct) {
     parentCls.call(this, acct);
 
     const browser = new Browser({runScripts: false, waitDuration: "15s"});
@@ -127,7 +127,8 @@ module.exports = (function(parentCls) {
 
   // Problems Fetcher
   (function(obj) {
-    const VOLUMES = ["classical", "tutorial", "riddle", "basics"];
+    const VOLUMES = ["contest_noturno", "mineira", "obi", "regionais",
+                     "seletivas", "seletiva_ioi", "sulamericana"];
     const PROBLEMS_PATH_UNF = "/problems/%s/start=%s";
 
     const maxPerPage = 50;
@@ -138,7 +139,7 @@ module.exports = (function(parentCls) {
     const TIMELIMIT_PATTERN = /([\d.,]+)/;
     const MEMOLIMIT_PATTERN = /([\d.,]+)\s*(\w+)/;
 
-    const tmplPath = './app/adapters/resources/spoj_template.html';
+    const tmplPath = './src/adapters/resources/spoj_template.html';
     const tmpl = jsrender.templates(tmplPath);
 
     const client = new RequestClient('http', HOST);
@@ -163,7 +164,7 @@ module.exports = (function(parentCls) {
           $('h3').replaceWith(function () {
             return "<div class='section-title'>" + $(this).html() + "</div>";
           });
-          let header = $('#problem-meta tbody').children(), match;
+          let header = $('.probleminfo').children(), match;
           let tl = getMetadata(header.eq(2));
           if (tl && (match = tl.match(TIMELIMIT_PATTERN))) {
             data.timelimit = parseFloat(match[1]);
@@ -176,7 +177,7 @@ module.exports = (function(parentCls) {
           if (rs) {
             data.source = rs;
           }
-          let description = $('#problem-body');
+          let description = $('.prob');
           description.find('pre').each((i, item) => {
             item = $(item);
             let data = item.html();
@@ -199,19 +200,17 @@ module.exports = (function(parentCls) {
       client.get(href, (err, res, html) => {
         html = html || '';
         let $ = cheerio.load(html);
-        $('table.problems tbody').children().each((i, elem) => {
-          try {
-            elem = $(elem).children().eq(1).find('a');
-            let id = elem.attr('href').match(PROBLEM_ID_PATTERN)[1];
-            let name = elem.text();
-            if (id && name) {
-              problems.push({
-                id: id,
-                name: name,
-                oj: TYPE
-              });
-            }
-          } catch (err) {}
+        $('tr.problemrow').each((i, elem) => {
+          elem = $(elem).children().eq(1).find('a');
+          let id = elem.attr('href').match(PROBLEM_ID_PATTERN)[1];
+          let name = elem.find('b').text();
+          if (id && name) {
+            problems.push({
+              id: id,
+              name: name,
+              oj: TYPE
+            });
+          }
         });
         return callback(null, problems);
       });
@@ -229,7 +228,7 @@ module.exports = (function(parentCls) {
           let lastPage = 0;
           try {
             let $ = cheerio.load(html);
-            let elem = $('ul.pagination li:last-child a').attr('href');
+            let elem = $('a.pager_link:contains(">")').attr('href');
             lastPage = parseInt(elem.match(LAST_PAGE_PATTERN)[1]);
           } catch (err) {}
           let idx = 0;
@@ -246,7 +245,7 @@ module.exports = (function(parentCls) {
     obj.fetchProblems = (callback) => {
       async.reduce(VOLUMES, [], reduceVolumes, callback);
     }
-  })(AdapterSPOJ);
+  })(AdapterSPOJBR);
 
-  return AdapterSPOJ;
+  return AdapterSPOJBR;
 })(Adapter);

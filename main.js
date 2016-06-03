@@ -2,9 +2,9 @@
 
 const async       = require('async');
 
-const Dbs     = require('./app/services/dbs'),
-      Judger  = require('./app/services/judger'),
-      Fetcher = require('./app/services/fetcher');
+const Dbs     = require('./src/services/dbs'),
+      Judger  = require('./src/services/judger'),
+      Fetcher = require('./src/services/fetcher');
 
 if (process.env.NODE_ENV === 'development') {
   //const test = require('./tests/testCODECHEF');

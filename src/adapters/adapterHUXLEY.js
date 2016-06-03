@@ -148,7 +148,7 @@ module.exports = (function(parentCls){
       const PROBLEM_PATH_UNF = "/api/v1/problems/%s";
       const EXAMPLES_PATH_UNF = "/api/v1/problems/%s/examples?max=10";
 
-      const tmplPath = './app/adapters/resources/huxley_template.html';
+      const tmplPath = './src/adapters/resources/huxley_template.html';
       const tmpl = jsrender.templates(tmplPath);
 
       obj.import = (problem, callback) => {
