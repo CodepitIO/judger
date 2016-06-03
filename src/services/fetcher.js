@@ -47,7 +47,9 @@ module.exports = (() => {
       .map((problem) => {
         return async.retryable(3, async.apply(importProblem, problem));
       });
-    async.parallel(async.reflectAll(importers), callback);
+    async.parallel(async.reflectAll(importers), () => {
+      return callback();
+    });
   }
 
   function saveProblems(problems, callback) {
@@ -101,7 +103,7 @@ module.exports = (() => {
       runOnInit: (process.env.NODE_ENV === 'development')
     });
     job.start();
-    return callback();
+    return callback && callback();
   }
 
   function loadProblems(callback) {
