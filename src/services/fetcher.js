@@ -19,7 +19,7 @@ module.exports = (() => {
   function importProblem(problem, callback) {
     ojs[problem.oj].import(problem, (err, data) => {
       problem.fullName = problem.originalUrl = null;
-      if (!err && data && ((data.html && data.html.length > 50) || data.isPdf)) {
+      if (!err && data && (data.html || data.isPdf)) {
         problem.imported = !data.isPdf;
         for (var key in data) {
           problem[key] = data[key];
@@ -30,7 +30,7 @@ module.exports = (() => {
       }
       problem.importTries++;
       return problem.save(() => {
-        return callback(Errors.ImportFailed);
+        return callback && callback(Errors.ImportFailed);
       });
     });
   }
