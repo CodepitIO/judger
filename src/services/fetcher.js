@@ -46,9 +46,10 @@ module.exports = (() => {
       })
       .map((problem) => {
         return async.retryable(3, async.apply(importProblem, problem));
-      });
+      })
+      .value()
     async.parallel(async.reflectAll(importers), () => {
-      return callback();
+      return callback && callback()
     });
   }
 
