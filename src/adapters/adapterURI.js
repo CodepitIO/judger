@@ -4,7 +4,8 @@ const path    = require('path'),
       async   = require('async'),
       Browser = require('zombie'),
       util    = require('util'),
-      cheerio = require('cheerio');
+      cheerio = require('cheerio'),
+      _       = require('lodash');
 
 const Adapter       = require('../adapters/adapter'),
       RequestClient = require('../utils/requestClient'),
@@ -28,7 +29,7 @@ module.exports = (function(parentCls) {
 
     AdapterURI.accessKey = acct.getAccessKey();
 
-    const browser = new Browser({runScripts: false, waitDuration: "15s"});
+    const browser = new Browser({runScripts: false, waitDuration: "30s"});
     const client = new RequestClient('https', HOST);
 
     function login(callback) {
@@ -57,7 +58,7 @@ module.exports = (function(parentCls) {
     function getSubmissionId(callback) {
       let url = util.format(SUBMISSIONS_API_UNF, AdapterURI.accessKey, 10);
       client.get(url, {json: true}, (err, res, data) => {
-        if (err) return callback(err);
+        if (err || !_.isArray(data)) return callback(err);
         for (let i = 0; i < data.length; i++) {
           if (data[i].UserID.toString() === acct.getId()) {
             return callback(null, data[i].SubmissionID.toString());
@@ -70,7 +71,7 @@ module.exports = (function(parentCls) {
     function send(submission, retry, callback) {
       async.waterfall([
         (next) => {
-          browser.visit("http://" + HOST + SUBMIT_PAGE_PATH).then(next);
+          browser.visit("https://" + HOST + SUBMIT_PAGE_PATH).then(next);
         },
         (next) => {
           browser

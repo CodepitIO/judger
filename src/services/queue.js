@@ -3,7 +3,8 @@
 const kue              = require('kue'),
       async            = require('async'),
       Submission       = require('../models/submission'),
-      SubmissionStatus = require('../config/defaults').submissionStatus;
+      SubmissionStatus = require('../config/defaults').submissionStatus,
+      socket           = require('./socket');
 
 var Queue = kue.createQueue({
   redis: { host: 'redis' },
@@ -24,6 +25,7 @@ function updateSubmission(queueId, data) {
       for (var i in data) {
         submission[i] = data[i];
       }
+      socket.broadcast(submission)
       return submission.save(next);
     }
   ]);

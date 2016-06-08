@@ -41,6 +41,8 @@ module.exports = (function() {
       async.retry({times: 5, interval: 2000}, this._login, (err) => {
         if (err) {
           console.log(`Unable to log to ${acct.getType()} with account ${acct.getUser()}.`);
+        } else {
+          console.log(`Logged in on ${acct.getType()} with account ${acct.getUser()}.`);
         }
       });
     }

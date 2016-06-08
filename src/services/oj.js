@@ -37,6 +37,7 @@ module.exports = (function() {
           adapter.send(submission, next);
         },
         (_ojId, next) => {
+          if (!_ojId) return next(Errors.SubmissionFail);
           submission.oj_id = _ojId;
           Submission.count({oj_id: _ojId}, next);
         },

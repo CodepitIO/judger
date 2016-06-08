@@ -21,6 +21,7 @@
     "mongoose": "^4.4.3",
     "redis": "^2.4.2",
     "request": "2.58.0",
+    "socket.io-emitter": "^1.0.0",
     "zombie": "git+https://git@github.com/godely/zombie.git"
   }
 }
