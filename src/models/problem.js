@@ -2,6 +2,8 @@
 
 const mongoose = require('mongoose')
 
+const Defaults = require('../config/defaults').oj
+
 let problemSchema = mongoose.Schema({
   id: String,
   name: String,
