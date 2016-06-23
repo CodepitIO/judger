@@ -50,7 +50,7 @@ module.exports = (function(parentCls){
           id = $('.id a').html();
           assert(id && id.length >= 6);
         } catch (e) {
-          return callback(errors.SubmissionFail);
+          return callback(Errors.SubmissionFail);
         }
         return callback(null, id);
       });
@@ -77,10 +77,10 @@ module.exports = (function(parentCls){
           return callback(err);
         }
         if (html.match(INVALID_ACC_PATTERN)) {
-          return callback(errors.LoginFail);
+          return callback(Errors.LoginFail);
         }
         if (html.match(FAST_SUB_PATTERN)) {
-          return callback(errors.SubmissionFail);
+          return callback(Errors.SubmissionFail);
         }
         return getSubmissionID(callback);
       });

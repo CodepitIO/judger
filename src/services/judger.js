@@ -33,8 +33,10 @@ module.exports = (() => {
   }
 
   function loginJudgers(callback) {
-    for (var name in ojs) {
-      ojs[name].login();
+    if (process.env.NODE_ENV !== 'development') {
+      for (var name in ojs) {
+        ojs[name].login();
+      }
     }
     return callback();
   }

@@ -1,14 +1,6 @@
 'use strict';
 
 module.exports = {
-  //GENERAL
-  scoreboardStatus: {
-    'PENDING': 0,
-    'WAITING': 1,
-    'FAIL': 2,
-    'SUCCESS': 3
-  },
-
   submissionStatus: {
     'COMPILING': -4,
   	'RUNNING': -3,
@@ -56,6 +48,28 @@ module.exports = {
     'pascal' : '.pas',
     'cpp11' : '.cpp',
     'python' : '.py',
+  },
+
+  scoreboardStatusName: {
+    '0': 'PENDING',
+    '1': 'ACCEPTED',
+    '2': 'REJECTED',
+    '3': 'ERROR',
+  },
+
+  getScoreboardStatus: (verdict) => {
+    if (verdict <= 0) {
+      // Pending
+      return 0;
+    } else if (verdict === 1) {
+      // Accepted
+      return 1;
+    } else if (verdict < 12) {
+      // Rejected
+      return 2;
+    }
+    // Error
+    return 3;
   },
 
   oj: {
