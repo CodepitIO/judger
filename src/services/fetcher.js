@@ -12,6 +12,7 @@ const Problem   = require('../models/problem'),
       Defaults = require('../config/defaults').oj
 
 const LOAD_AND_IMPORT_INTERVAL = 24 * 60 * 60 * 1000;
+const S3_QUEUE_CONCURRENCY = 10
 
 const FETCH_PROBLEMS_CRON = '00 00 03 * * *';
 const FETCH_PROBLEMS_TZ = 'America/Recife';
@@ -54,6 +55,10 @@ module.exports = (() => {
     }
   }
 
+  let uploadToS3Queue = async.queue((problem, callback) => {
+    return async.timeout(async.apply(uploadToS3, problem), 30 * 1000)(callback)
+  }, S3_QUEUE_CONCURRENCY)
+
   function importProblem(problem, callback) {
     ojs[problem.oj].import(problem, (err, data) => {
       problem.fullName = problem.originalUrl = null
@@ -61,7 +66,7 @@ module.exports = (() => {
         for (var key in data) {
           problem[key] = data[key]
         }
-        return async.timeout(async.apply(uploadToS3, problem), 30 * 1000)((err, details) => {
+        return uploadToS3Queue.push(problem, (err, details) => {
           if (err) return importSaveFail(problem, callback)
           count++
           console.log(`${count}: Imported ${problem.id} from ${problem.oj}.`)
@@ -85,6 +90,7 @@ module.exports = (() => {
       .filter((problem) => {
         return shouldImport(problem)
       })
+      .shuffle()
       .map((problem) => {
         return async.retryable(3, async.apply(importProblem, problem));
       })

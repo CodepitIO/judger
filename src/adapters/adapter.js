@@ -129,14 +129,6 @@ module.exports = (function() {
       return importQueues[type];
     }
 
-    // TODO REMOVE-ME
-    setInterval(function() {
-      for (var key in importQueues) {
-        console.log('AQUI!AQUI!')
-        console.log(key, importQueues[key].running(), importQueues[key].length(), importQueues[key].concurrency)
-      }
-    }, 60 * 1000)
-
     obj.import = (type, problem, callback) => {
       getOrCreateQueue(type).push(problem, callback);
     }
