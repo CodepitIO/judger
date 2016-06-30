@@ -1,7 +1,8 @@
 'use strict';
 
 const redis     = require('redis'),
-      mongoose  = require('mongoose');
+      mongoose  = require('mongoose'),
+      aws       = require('aws-sdk');
 
 const mongoUrl = `mongodb://mongo:27017/maratonando`;
 
@@ -24,3 +25,6 @@ exports.createRedisClient = () => {
     prefix: process.env.NODE_ENV,
   });
 }
+
+exports.S3 = new aws.S3({params: {Bucket: 'codepit'}})
+exports.S3Stream = require('s3-upload-stream')(exports.S3)

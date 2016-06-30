@@ -3,21 +3,24 @@
 const kue   = require('kue')
 
 const SubmissionStatus  = require('../config/defaults').submissionStatus,
-      Publisher         = require('./publisher')
+      Publisher         = require('./publisher'),
+      DownloadFile      = require('../utils/util').downloadFile
 
-var Queue = kue.createQueue({
+// --- SUBMISSION QUEUE ---
+
+var SubmissionQueue = kue.createQueue({
   redis: { host: 'redis' },
   jobEvents: false,
 });
 
-Queue.on('job progress', (id, progress, data) => {
+SubmissionQueue.on('job progress', (id, progress, data) => {
   Publisher.updateSubmission(id, data);
 });
 
-Queue.on('job failed', (id, err) => {
+SubmissionQueue.on('job failed', (id, err) => {
   Publisher.updateSubmission(id, { oj_id: -1, verdict: SubmissionStatus.SUBMISSION_ERROR});
 });
 
-Queue.watchStuckJobs(60 * 1000);
+SubmissionQueue.watchStuckJobs(60 * 1000);
 
-module.exports = Queue;
+exports.SubmissionQueue = SubmissionQueue

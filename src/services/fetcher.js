@@ -2,10 +2,13 @@
 
 const CronJob = require('cron').CronJob,
       async   = require('async'),
+      request = require('request'),
       _       = require('lodash');
 
-const Problem = require('../models/problem'),
-      Errors  = require('../utils/errors');
+const Problem   = require('../models/problem'),
+      Errors    = require('../utils/errors'),
+      S3        = require('./dbs').S3,
+      S3Stream  = require('./dbs').S3Stream;
 
 const LOAD_AND_IMPORT_INTERVAL = 24 * 60 * 60 * 1000;
 
@@ -16,27 +19,58 @@ module.exports = (() => {
   let allProblems = {};
   let ojs = {};
 
+  let count = 0
+
+  function importSaveFail(problem, callback) {
+    problem.importTries++;
+    return problem.save(() => {
+      return callback && callback(Errors.ImportFailed);
+    });
+  }
+
   function importProblem(problem, callback) {
     ojs[problem.oj].import(problem, (err, data) => {
+      let url = problem.originalUrl
       problem.fullName = problem.originalUrl = null;
       if (!err && data && (data.html || data.isPdf)) {
-        problem.imported = !data.isPdf;
         for (var key in data) {
+          if (key === 'html') continue
           problem[key] = data[key];
         }
-        problem.url = `problems/${problem._id}`;
-        console.log(`Imported ${problem.id} from ${problem.oj}`)
-        return problem.save(callback);
+        return async.waterfall([
+          (next) => {
+            if (data.isPdf) {
+              let obj = {Key: `problems/${problem._id}.pdf`, ACL: 'public-read'}
+              let upload = S3Stream.upload(obj)
+              upload.on('error', next)
+              upload.on('uploaded', (details) => { return next(null, details) })
+              let download = request(url)
+              download.on('error', next)
+              return download.pipe(upload)
+            } else {
+              let obj = {Key: `problems/${problem._id}.html`, Body: data.html, ACL: 'public-read'}
+              return S3.upload(obj, next)
+            }
+          },
+          (details, next) => {
+            problem.imported = true
+            problem.url = details.Location
+            count++
+            console.log(`${count}: Imported ${problem.id} from ${problem.oj}.`)
+            return problem.save(next);
+          }
+        ], (err) => {
+          if (err) return importSaveFail(problem, callback)
+          return callback && callback()
+        })
+      } else {
+        return importSaveFail(problem, callback)
       }
-      problem.importTries++;
-      return problem.save(() => {
-        return callback && callback(Errors.ImportFailed);
-      });
     });
   }
 
   function shouldImport(problem) {
-    return !problem.imported && !problem.isPdf && !problem.importTries < 10;
+    return !problem.imported && !problem.importTries < 10;
   }
 
   function importProblemSet(problems, callback) {
@@ -123,7 +157,7 @@ module.exports = (() => {
       loadProblems,
       importProblemSet,
       startDailyFetcher,
-    ], callback);
+    ], callback)
   };
 
   return this;

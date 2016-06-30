@@ -78,10 +78,11 @@ module.exports = (function() {
     }
 
     let sendQueue = async.queue((submission, callback) => {
-      let language = Settings.submitLang[submission.language];
-      if (!language) {
-        return callback(Errors.InternalError);
+      if (!submission || !submission.language) {
+        return callback(Errors.InternalError)
       }
+      let language = Settings.submitLang[submission.language];
+      if (!language) return callback(Errors.InternalError);
       let code = submission.code + '\n// ' + (new Date()).getTime();
       let data = {
         language: language,
@@ -117,7 +118,7 @@ module.exports = (function() {
       if (!importQueues[type]) {
         importQueues[type] = async.queue((problem, callback) => {
           if (subClasses[type].import) {
-            // We wait at most 10 seconds to import a problem
+            // We wait at most 2 minutes to import a problem
             return async.timeout((callback) => {
               subClasses[type].import(problem, callback);
             }, 2 * 60 * 1000)(callback);

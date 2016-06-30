@@ -45,12 +45,9 @@ function updateSubmission(queueId, data) {
       Submission.findById(job.data.id, next);
     },
     (submission, next) => {
-      if (submission.verdict > 0 && submission.verdict < 12) {
-        return next()
-      }
-      for (var i in data) {
-        submission[i] = data[i]
-      }
+      if (!submission) return next(new Error())
+      if (submission.verdict > 0 && submission.verdict < 12) return next()
+      for (var i in data) submission[i] = data[i]
       submission.save(next)
     },
     (submission, cnt, next) => {

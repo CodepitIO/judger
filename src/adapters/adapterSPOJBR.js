@@ -113,9 +113,7 @@ module.exports = (function(parentCls) {
         for (let id in judgeSet) {
           try {
             let data = $("#statusres_" + id).attr('status');
-            if (data) {
-              judgeSet[id].verdict = data;
-            }
+            if (data) judgeSet[id].verdict = data;
           } catch (err) {}
         }
         return callback();

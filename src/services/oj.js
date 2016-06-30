@@ -6,7 +6,7 @@ const Adapter           = require('../adapters/adapter'),
       Submission        = require('../models/submission'),
       Errors            = require('../utils/errors'),
       Defaults          = require('../config/defaults'),
-      Queue             = require('./queue');
+      SubmissionQueue   = require('./queue').SubmissionQueue;
 
 const SubmissionStatus  = Defaults.submissionStatus;
 
@@ -74,7 +74,7 @@ module.exports = (function() {
       for (let i in adapters) {
         adapters[i].start();
       }
-      Queue.process(
+      SubmissionQueue.process(
         `submission:${type}`,
         Settings.maxPendingSubmissions || 6,
         handleSubmission

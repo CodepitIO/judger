@@ -3,15 +3,15 @@
 const async       = require('async'),
       kue         = require('kue');
 
-const OjAccount   = require('../models/oj_account'),
-      OnlineJudge = require('./oj'),
-      Queue       = require('./queue');
+const OjAccount       = require('../models/oj_account'),
+      OnlineJudge     = require('./oj'),
+      SubmissionQueue = require('./queue').SubmissionQueue;
 
 module.exports = (() => {
   let ojs = {};
 
   function reloadActiveTasks() {
-    Queue.active((err, ids) => {
+    SubmissionQueue.active((err, ids) => {
       ids.forEach((id) => {
         kue.Job.get(id, (err, job) => {
           job.inactive();
