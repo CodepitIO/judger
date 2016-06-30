@@ -3,12 +3,13 @@
 const CronJob = require('cron').CronJob,
       async   = require('async'),
       request = require('request'),
-      _       = require('lodash');
+      _       = require('lodash')
 
 const Problem   = require('../models/problem'),
       Errors    = require('../utils/errors'),
       S3        = require('./dbs').S3,
-      S3Stream  = require('./dbs').S3Stream;
+      S3Stream  = require('./dbs').S3Stream,
+      Defaults = require('../config/defaults').oj
 
 const LOAD_AND_IMPORT_INTERVAL = 24 * 60 * 60 * 1000;
 
@@ -23,45 +24,51 @@ module.exports = (() => {
 
   function importSaveFail(problem, callback) {
     problem.importTries++;
+    console.log(`<<<<<<< Error! ${problem.id} from ${problem.oj}.`)
     return problem.save(() => {
       return callback && callback(Errors.ImportFailed);
     });
   }
 
+  function uploadToS3(problem, callback) {
+    if (problem.isPdf) {
+      let errored = false
+      let obj = {Key: `problems/${problem._id}.pdf`, ACL: 'public-read'}
+      let upload = S3Stream.upload(obj)
+        .on('error', callback)
+        .on('uploaded', (details) => {
+          if (errored) return callback(new Error())
+          return callback(null, details)
+        })
+
+      let url = Defaults[problem.oj].url + Defaults[problem.oj].getProblemPdfPath(problem.id)
+      return request.get(url)
+        .on('error', callback)
+        .on('response', (response) => {
+          if (response.headers['content-length'] < 200) errored = true
+        })
+        .pipe(upload)
+    } else {
+      let obj = {Key: `problems/${problem._id}.html`, Body: problem.html, ACL: 'public-read'}
+      return S3.upload(obj, callback)
+    }
+  }
+
   function importProblem(problem, callback) {
     ojs[problem.oj].import(problem, (err, data) => {
-      let url = problem.originalUrl
-      problem.fullName = problem.originalUrl = null;
-      if (!err && data && (data.html || data.isPdf)) {
+      problem.fullName = problem.originalUrl = null
+      if (!err && data && ((data.html && data.html.length > 200) || data.isPdf)) {
         for (var key in data) {
-          if (key === 'html') continue
-          problem[key] = data[key];
+          problem[key] = data[key]
         }
-        return async.waterfall([
-          (next) => {
-            if (data.isPdf) {
-              let obj = {Key: `problems/${problem._id}.pdf`, ACL: 'public-read'}
-              let upload = S3Stream.upload(obj)
-              upload.on('error', next)
-              upload.on('uploaded', (details) => { return next(null, details) })
-              let download = request(url)
-              download.on('error', next)
-              return download.pipe(upload)
-            } else {
-              let obj = {Key: `problems/${problem._id}.html`, Body: data.html, ACL: 'public-read'}
-              return S3.upload(obj, next)
-            }
-          },
-          (details, next) => {
-            problem.imported = true
-            problem.url = details.Location
-            count++
-            console.log(`${count}: Imported ${problem.id} from ${problem.oj}.`)
-            return problem.save(next);
-          }
-        ], (err) => {
+        return async.timeout(async.apply(uploadToS3, problem), 30 * 1000)((err, details) => {
           if (err) return importSaveFail(problem, callback)
-          return callback && callback()
+          count++
+          console.log(`${count}: Imported ${problem.id} from ${problem.oj}.`)
+          problem.imported = true
+          problem.url = details.Location
+          problem.html = undefined
+          return problem.save(callback)
         })
       } else {
         return importSaveFail(problem, callback)
@@ -76,15 +83,13 @@ module.exports = (() => {
   function importProblemSet(problems, callback) {
     let importers = _.chain(problems)
       .filter((problem) => {
-        return shouldImport(problem);
+        return shouldImport(problem)
       })
       .map((problem) => {
         return async.retryable(3, async.apply(importProblem, problem));
       })
       .value()
-    async.parallel(async.reflectAll(importers), () => {
-      return callback && callback()
-    });
+    async.parallel(async.reflectAll(importers), callback);
   }
 
   function saveProblems(problems, callback) {
