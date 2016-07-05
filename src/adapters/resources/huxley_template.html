@@ -1,33 +1,33 @@
 <div class="ttypography">
   <div class="problem-statement">
     <div>
-      {{:description}}
+      <%= description %>
     </div>
     <p></p>
     <div class="input-specification">
       <div class="section-title">Entrada</div>
-      {{:inputFormat}}
+      <%= inputFormat %>
     </div>
     <div class="output-specification">
       <div class="section-title">Saída</div>
-      {{:outputFormat}}
+      <%= outputFormat %>
     </div>
-    {{if tests.length}}
-    <div class="sample-tests">
-      <div class="section-title">Exemplos de teste</div>
-      <div class="sample-test">
-        {{for tests}}
-        <div class="input">
-          <div class="title">entrada</div>
-          <pre>{{:input}}</pre>
+    <% if (tests.length > 0) { %>
+      <div class="sample-tests">
+        <div class="section-title">Exemplos de teste</div>
+        <div class="sample-test">
+          <% _.forEach(tests, function(test) { %>
+            <div class="input">
+              <div class="title">entrada</div>
+              <pre><%= test.input %></pre>
+            </div>
+            <div class="output">
+              <div class="title">saída</div>
+              <pre><%= test.output %></pre>
+            </div>
+          <% }) %>
         </div>
-        <div class="output">
-          <div class="title">saída</div>
-          <pre>{{:output}}</pre>
-        </div>
-        {{/for}}
       </div>
-    </div>
-    {{/if}}
+    <% } %>
   </div>
 </div>

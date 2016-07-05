@@ -4,13 +4,12 @@ const fs        = require('fs'),
       async     = require('async'),
       path      = require('path'),
       util      = require('util'),
-      _         = require('lodash'),
-      jsrender  = require('jsrender');
+      _         = require('lodash')
 
 const Adapter       = require('../adapters/adapter'),
       Errors        = require('../utils/errors'),
       RequestClient = require('../utils/requestClient'),
-      Defaults      = require('../config/defaults');
+      Defaults      = require('../config/defaults')
 
 const HOST              = 'www.thehuxley.com',
       AUTH_PATH         = '/auth/oauth/token',
@@ -149,7 +148,7 @@ module.exports = (function(parentCls){
       const EXAMPLES_PATH_UNF = "/api/v1/problems/%s/examples?max=10";
 
       const tmplPath = './src/adapters/resources/huxley_template.html';
-      const tmpl = jsrender.templates(tmplPath);
+      const tmpl = _.template(fs.readFileSync(tmplPath, 'utf8'));
 
       obj.import = (problem, callback) => {
         let problemPath = util.format(PROBLEM_PATH_UNF, problem.id);
@@ -186,7 +185,7 @@ module.exports = (function(parentCls){
             meta.inputFormat = meta.inputFormat.replace(/<=/g, '&lt;=');
             meta.outputFormat = meta.outputFormat || '';
             meta.outputFormat = meta.outputFormat.replace(/<=/g, '&lt;=');
-            data.html = tmpl.render({
+            data.html = tmpl({
               description: meta.description,
               inputFormat: meta.inputFormat,
               outputFormat: meta.outputFormat,
@@ -234,7 +233,7 @@ module.exports = (function(parentCls){
           }
         );
       }
-    })(AdapterHUXLEY);
+    })(AdapterHUXLEY)
 
     return AdapterHUXLEY;
 })(Adapter);

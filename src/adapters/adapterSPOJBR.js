@@ -6,7 +6,8 @@ const path      = require('path'),
       assert    = require('assert'),
       cheerio   = require('cheerio'),
       util      = require('util'),
-      jsrender  = require('jsrender');
+      fs        = require('fs'),
+      _         = require('lodash')
 
 const Adapter       = require('../adapters/adapter'),
       Defaults      = require('../config/defaults'),
@@ -138,7 +139,7 @@ module.exports = (function(parentCls) {
     const MEMOLIMIT_PATTERN = /([\d.,]+)\s*(\w+)/;
 
     const tmplPath = './src/adapters/resources/spoj_template.html';
-    const tmpl = jsrender.templates(tmplPath);
+    const tmpl = _.template(fs.readFileSync(tmplPath, 'utf8'));
 
     const client = new RequestClient('http', HOST);
 
@@ -186,7 +187,7 @@ module.exports = (function(parentCls) {
             data = data.replace(/<strong>\s*<br>/, '<strong>');
             item.html(data);
           });
-          data.html = tmpl.render({description: description.html()});
+          data.html = tmpl({description: description.html()})
         } catch (err) {
           return callback(err);
         }
