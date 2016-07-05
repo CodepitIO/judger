@@ -26,5 +26,5 @@ exports.createRedisClient = () => {
   });
 }
 
+aws.config.httpOptions = {timeout: 20000}
 exports.S3 = new aws.S3({params: {Bucket: 'codepit'}})
-exports.S3Stream = require('s3-upload-stream')(exports.S3)

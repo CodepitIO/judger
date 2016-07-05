@@ -3,19 +3,20 @@
 const CronJob = require('cron').CronJob,
       async   = require('async'),
       request = require('request'),
+      util    = require('util'),
       _       = require('lodash')
 
 const Problem   = require('../models/problem'),
       Errors    = require('../utils/errors'),
       S3        = require('./dbs').S3,
-      S3Stream  = require('./dbs').S3Stream,
       Defaults = require('../config/defaults').oj
 
-const LOAD_AND_IMPORT_INTERVAL = 24 * 60 * 60 * 1000;
+const LOAD_AND_IMPORT_INTERVAL = 24 * 60 * 60 * 1000
 const S3_QUEUE_CONCURRENCY = 10
 
 const FETCH_PROBLEMS_CRON = '00 00 03 * * *';
 const FETCH_PROBLEMS_TZ = 'America/Recife';
+const S3_PROBLEM_URL = 'https://%s.s3.amazonaws.com/%s';
 
 module.exports = (() => {
   let allProblems = {};
@@ -33,22 +34,13 @@ module.exports = (() => {
 
   function uploadToS3(problem, callback) {
     if (problem.isPdf) {
-      let errored = false
-      let obj = {Key: `problems/${problem._id}.pdf`, ACL: 'public-read'}
-      let upload = S3Stream.upload(obj)
-        .on('error', callback)
-        .on('uploaded', (details) => {
-          if (errored) return callback(new Error())
-          return callback(null, details)
-        })
-
       let url = Defaults[problem.oj].url + Defaults[problem.oj].getProblemPdfPath(problem.id)
-      return request.get(url)
-        .on('error', callback)
-        .on('response', (response) => {
-          if (response.headers['content-length'] < 200) errored = true
-        })
-        .pipe(upload)
+      request({url: url, encoding: null}, (err, res, body) => {
+        if (err || res.headers['content-length'] < 200 || res.headers['content-type'] !== 'application/pdf') {
+          return callback(err || new Error())
+        }
+        S3.upload({Key: `problems/${problem._id}.pdf`, Body: body, ACL: 'public-read'}, callback)
+      })
     } else {
       let obj = {Key: `problems/${problem._id}.html`, Body: problem.html, ACL: 'public-read'}
       return S3.upload(obj, callback)
@@ -56,7 +48,7 @@ module.exports = (() => {
   }
 
   let uploadToS3Queue = async.queue((problem, callback) => {
-    return async.timeout(async.apply(uploadToS3, problem), 30 * 1000)(callback)
+    return async.timeout(async.apply(uploadToS3, problem), 10 * 60 * 1000)(callback)
   }, S3_QUEUE_CONCURRENCY)
 
   function importProblem(problem, callback) {
@@ -69,7 +61,7 @@ module.exports = (() => {
         return uploadToS3Queue.push(problem, (err, details) => {
           if (err) return importSaveFail(problem, callback)
           count++
-          console.log(`${count}: Imported ${problem.id} from ${problem.oj}.`)
+          console.log(`${count}: Imported ${problem.id} from ${problem.oj} (${details.Location}).`)
           problem.imported = true
           problem.url = details.Location
           problem.html = undefined
@@ -82,7 +74,7 @@ module.exports = (() => {
   }
 
   function shouldImport(problem) {
-    return !problem.imported && !problem.importTries < 10;
+    return !problem.imported && problem.importTries < 10;
   }
 
   function importProblemSet(problems, callback) {
@@ -95,7 +87,9 @@ module.exports = (() => {
         return async.retryable(3, async.apply(importProblem, problem));
       })
       .value()
-    async.parallel(async.reflectAll(importers), callback);
+    async.parallel(async.reflectAll(importers), () => {
+      return callback && callback()
+    });
   }
 
   function saveProblems(problems, callback) {
@@ -152,19 +146,59 @@ module.exports = (() => {
     return callback && callback();
   }
 
-  function loadProblems(callback) {
+  function loadProblems(s3Objects, callback) {
+    if (typeof(s3Objects) === 'function') {
+      callback = s3Objects
+      s3Objects = undefined
+    }
     Problem.find((err, problems) => {
-      allProblems = _.groupBy(problems, 'oj');
+      allProblems = _.groupBy(problems, 'oj')
       _.forEach(allProblems, (value, oj) => {
-        allProblems[oj] = _.keyBy(value, 'id');
-      });
-      return callback(null, problems);
+        allProblems[oj] = _.keyBy(value, 'id')
+      })
+      if (!s3Objects) return callback && callback(null, problems)
+      async.eachSeries(problems, (p, next) => {
+        if (!p.imported && s3Objects[p._id]) {
+          p.imported = true
+          p.url = util.format(S3_PROBLEM_URL, process.env.AWS_S3_BUCKET, s3Objects[p._id])
+          p.save(next)
+        } else if (p.imported && !s3Objects[p._id]) {
+          p.imported = false
+          p.url = null
+          p.save(next)
+        } else {
+          async.setImmediate(next)
+        }
+      }, () => {
+        return callback && callback(null, problems)
+      })
     });
+  }
+
+  function loadS3Objects(callback) {
+    let CT = undefined
+    let s3Objects = {}
+    let totalSize = 0
+    async.forever((next) => {
+      S3.listObjectsV2({Prefix: 'problems/', ContinuationToken: CT}, (err, data) => {
+        if (err) return next(err)
+        _.forEach(data.Contents, (val) => {
+          totalSize += val.Size
+          let key = val.Key.match(/problems\/(.*)\.+/i)
+          if (key) s3Objects[key[1]] = val.Key
+        })
+        console.log(`AWS S3 ${totalSize / 1024 / 1024}MB accumulate`)
+        if (!data.NextContinuationToken) return callback(null, s3Objects)
+        CT = data.NextContinuationToken
+        return next()
+      })
+    }, callback)
   }
 
   this.start = (_ojs, callback) => {
     ojs = _ojs;
     async.waterfall([
+      // loadS3Objects,
       loadProblems,
       importProblemSet,
       startDailyFetcher,
