@@ -137,14 +137,16 @@ module.exports = ((parentCls) => {
                      "/index.php?option=com_onlinejudge&Itemid=8&category=2"];
     const PROBLEM_PATTERN = /^(\d+)\s*-\s*(.*)/i;
     const client = new RequestClient('https', HOST);
-    const PDF_FROM_ID = 500;
 
     const PROBLEM_METADATA_API = "http://uhunt.felix-halim.net/api/p/num/%s";
 
     function getContent(data, html, id) {
+      if (!_.includes(html, '<body>')) {
+        html = `<body>${html}</body>`
+      }
       html = html.replace(/<=/g, '&lt;=');
       let $ = cheerio.load(html);
-      let body = $('body');
+      let body = $('body')
       $('img').each((i, elem) => {
         elem = $(elem);
         let vol = parseInt(id / 100);
@@ -176,13 +178,10 @@ module.exports = ((parentCls) => {
       let problemUrl = Defaults.oj[TYPE].getProblemPath(problem.id);
       async.parallel({
         meta: (next) => {
-          return client.get(metadataUrl, {json: true}, next);
+          return client.get(metadataUrl, {json: true}, next)
         },
         body: (next) => {
-          if (parseInt(problem.id) >= PDF_FROM_ID) {
-            return next(null, {isPdf: true}, null);
-          }
-          return client.get(problemUrl, next);
+          return client.get(problemUrl, next)
         }
       }, (err, results) => {
         if (err) return callback(err);
@@ -192,9 +191,8 @@ module.exports = ((parentCls) => {
           data.timelimit = tl / 1000.0;
           data.memorylimit = '128 MB';
           let html = results.body[1];
-          data.isPdf = results.body[0].isPdf ||
-                       (_.includes(html, "HTTP-EQUIV") && html.length <= 200);
-          if (!data.isPdf) getContent(data, html, problem.id);
+          data.isPdf = (_.includes(html, "HTTP-EQUIV") && html.length <= 200)
+          if (!data.isPdf) getContent(data, html, problem.id)
         } catch (err) {
           return callback(err);
         }

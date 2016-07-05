@@ -136,11 +136,13 @@ module.exports = ((parentCls) => {
     const VOLUMES = ["/index.php?option=com_onlinejudge&Itemid=8&category=1"];
     const PROBLEM_PATTERN = /^(\d+)\s*-\s*(.*)/i;
     const client = new RequestClient('https', HOST);
-    const PDF_FROM_ID = 500;
 
     const PROBLEM_METADATA_API = "https://icpcarchive.ecs.baylor.edu/uhunt/api/p/num/%s";
 
     function getContent(data, html, id) {
+      if (!_.includes(html, '<body>')) {
+        html = `<body>${html}</body>`
+      }
       html = html.replace(/<=/g, '&lt;=');
       let $ = cheerio.load(html);
       $('img').each((i, elem) => {
