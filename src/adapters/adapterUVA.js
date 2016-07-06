@@ -145,7 +145,7 @@ module.exports = ((parentCls) => {
       if (!_.includes(html, '<body>')) {
         html = `<body>${html}</body>`
       }
-      html = html.replace(/(<)([^a-zA-Z\s\/\\])/g, '&lt;$2');
+      html = html.replace(/(<)([^a-zA-Z\s\/\\!])/g, '&lt;$2');
       let $ = cheerio.load(html);
       let body = $('body')
       $('img').each((i, elem) => {

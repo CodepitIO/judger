@@ -151,7 +151,7 @@ module.exports = (function(parentCls) {
         if (err) return callback(err);
         let data = {};
         try {
-          html = html.replace(/(<)([^a-zA-Z\s\/\\])/g, '&lt;$2');
+          html = html.replace(/(<)([^a-zA-Z\s\/\\!])/g, '&lt;$2');
           let $ = cheerio.load(html);
           Util.adjustImgSrcs($, TYPE);
           $('a').each((i, elem) => {

@@ -120,7 +120,7 @@ module.exports = (function(parentCls){
 
     const client = new RequestClient('http', HOST);
 
-    const TIMELIMIT_PATTERN = /time\s*limit:\s*([\d.,]+?)\s*\w/i;
+    const TIMELIMIT_PATTERN = /time\s*limit:\s*([\d.,]+)\s*\w/i;
     const MEMOLIMIT_PATTERN = /memory\s*limit:\s*([\d\w\s]+)/i;
 
     obj.import = (problem, callback) => {
@@ -129,7 +129,7 @@ module.exports = (function(parentCls){
         if (err) return callback(err);
         let data = {};
         try {
-          html = html.replace(/(<)([^a-zA-Z\s\/\\])/g, '&lt;$2');
+          html = html.replace(/(<)([^a-zA-Z\s\/\\!])/g, '&lt;$2');
           let $ = cheerio.load(html);
           Util.adjustImgSrcs($, TYPE);
           $('a').each((i, elem) => {
