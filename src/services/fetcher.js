@@ -26,13 +26,14 @@ module.exports = (() => {
 
   function importSaveFail(problem, callback) {
     problem.importTries++;
+    problem.imported = problem.isPdf = false;
     console.log(`<<<<<<< Error! ${problem.id} from ${problem.oj}.`)
     return problem.save(() => {
       return callback && callback(Errors.ImportFailed);
     });
   }
 
-  function uploadToS3(problem, callback) {
+  let uploadToS3Queue = async.queue((problem, callback) => {
     if (problem.isPdf) {
       let url = Defaults[problem.oj].url + Defaults[problem.oj].getProblemPdfPath(problem.id)
       request({url: url, encoding: null}, (err, res, body) => {
@@ -45,10 +46,6 @@ module.exports = (() => {
       let obj = {Key: `problems/${problem._id}.html`, Body: problem.html, ACL: 'public-read'}
       return S3.upload(obj, callback)
     }
-  }
-
-  let uploadToS3Queue = async.queue((problem, callback) => {
-    return async.timeout(async.apply(uploadToS3, problem), 10 * 60 * 1000)(callback)
   }, S3_QUEUE_CONCURRENCY)
 
   function importProblem(problem, callback) {
@@ -59,7 +56,10 @@ module.exports = (() => {
           problem[key] = data[key]
         }
         return uploadToS3Queue.push(problem, (err, details) => {
-          if (err) return importSaveFail(problem, callback)
+          if (err) {
+            console.log('>> ', err)
+            return importSaveFail(problem, callback)
+          }
           count++
           console.log(`${count}: Imported ${problem.id} from ${problem.oj} (${details.Location}).`)
           problem.imported = true
@@ -68,6 +68,7 @@ module.exports = (() => {
           return problem.save(callback)
         })
       } else {
+        console.log('> ', err)
         return importSaveFail(problem, callback)
       }
     });
@@ -146,32 +147,13 @@ module.exports = (() => {
     return callback && callback();
   }
 
-  function loadProblems(s3Objects, callback) {
-    if (typeof(s3Objects) === 'function') {
-      callback = s3Objects
-      s3Objects = undefined
-    }
+  function loadProblems(callback) {
     Problem.find((err, problems) => {
       allProblems = _.groupBy(problems, 'oj')
       _.forEach(allProblems, (value, oj) => {
         allProblems[oj] = _.keyBy(value, 'id')
       })
-      if (!s3Objects) return callback && callback(null, problems)
-      async.eachSeries(problems, (p, next) => {
-        if (!p.imported && s3Objects[p._id]) {
-          p.imported = true
-          p.url = util.format(S3_PROBLEM_URL, process.env.AWS_S3_BUCKET, s3Objects[p._id])
-          p.save(next)
-        } else if (p.imported && !s3Objects[p._id]) {
-          p.imported = false
-          p.url = null
-          p.save(next)
-        } else {
-          async.setImmediate(next)
-        }
-      }, () => {
-        return callback && callback(null, problems)
-      })
+      return callback && callback(null, problems)
     });
   }
 
@@ -188,17 +170,18 @@ module.exports = (() => {
           if (key) s3Objects[key[1]] = val.Key
         })
         console.log(`AWS S3 ${totalSize / 1024 / 1024}MB accumulate`)
-        if (!data.NextContinuationToken) return callback(null, s3Objects)
+        if (!data.NextContinuationToken) return callback && callback()
         CT = data.NextContinuationToken
         return next()
       })
-    }, callback)
+    }, () => {
+      return callback && callback()
+    })
   }
 
   this.start = (_ojs, callback) => {
     ojs = _ojs;
     async.waterfall([
-      // loadS3Objects,
       loadProblems,
       importProblemSet,
       startDailyFetcher,

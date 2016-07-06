@@ -26,5 +26,4 @@ exports.createRedisClient = () => {
   });
 }
 
-aws.config.httpOptions = {timeout: 20000}
 exports.S3 = new aws.S3({params: {Bucket: 'codepit'}})

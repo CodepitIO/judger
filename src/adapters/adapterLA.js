@@ -5,6 +5,7 @@ const cheerio = require('cheerio'),
       async   = require('async'),
       path    = require('path'),
       util    = require('util'),
+      iconv   = require('iconv-lite'),
       _       = require('lodash');
 
 const Adapter       = require('../adapters/adapter'),
@@ -143,13 +144,20 @@ module.exports = ((parentCls) => {
       if (!_.includes(html, '<body>')) {
         html = `<body>${html}</body>`
       }
-      html = html.replace(/<=/g, '&lt;=');
+      html = html.replace(/(<)([^a-zA-Z\s\/\\])/g, '&lt;$2');
       let $ = cheerio.load(html);
       $('img').each((i, elem) => {
         elem = $(elem);
         let vol = parseInt(id / 100);
         let imgUrl = `${Defaults.oj[TYPE].url}/external/${vol}/${elem.attr('src')}`;
         elem.attr('src', imgUrl);
+      });
+      $('a').each((i, elem) => {
+        elem = $(elem);
+        let href = elem.attr('href')
+        if (href && href[0] === '/') {
+          elem.attr('href', '//' + HOST + href)
+        }
       });
       $('table[bgcolor="#0060F0"]').first().remove();
       $('h1').first().remove();
@@ -176,10 +184,10 @@ module.exports = ((parentCls) => {
       let problemUrl = Defaults.oj[TYPE].getProblemPath(problem.id);
       async.parallel({
         meta: (next) => {
-          return client.get(metadataUrl, {json: true}, next);
+          return client.get(metadataUrl, {json: true}, next)
         },
         body: (next) => {
-          return client.get(problemUrl, next);
+          return client.get(problemUrl, {encoding: null}, next)
         }
       }, (err, results) => {
         if (err) return callback(err);
@@ -188,9 +196,9 @@ module.exports = ((parentCls) => {
           let tl = results.meta[1] && results.meta[1].rtl || 3000;
           data.timelimit = tl / 1000.0;
           data.memorylimit = '128 MB';
-          let html = results.body[1];
-          data.isPdf = (_.includes(html, "HTTP-EQUIV") && html.length <= 200);
-          if (!data.isPdf) getContent(data, html, problem.id);
+          let html = iconv.decode(results.body[1], 'ISO-8859-1')
+          data.isPdf = (_.includes(html, "HTTP-EQUIV") && html.length <= 200)
+          if (!data.isPdf) getContent(data, html, problem.id)
         } catch (err) {
           return callback(err);
         }
