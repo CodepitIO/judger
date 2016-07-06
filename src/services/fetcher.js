@@ -51,7 +51,7 @@ module.exports = (() => {
   function importProblem(problem, callback) {
     ojs[problem.oj].import(problem, (err, data) => {
       problem.fullName = problem.originalUrl = null
-      if (!err && data && ((data.html && data.html.length > 200) || data.isPdf)) {
+      if (!err && data && ((data.html && data.html.length > 0) || data.isPdf)) {
         for (var key in data) {
           problem[key] = data[key]
         }
