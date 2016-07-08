@@ -95,22 +95,21 @@ module.exports = (function(parentCls) {
           return next();
         }
       ], (err) => {
+        return callback(Errors.InternalError);
         if (err && !retry) {
           return callback(err);
-        } else if (browser.location.pathname === LOGIN_PAGE_PATH) {
+        } else if (browser.location.pathname !== STATUS_PATH) {
           if (!retry) {
-            return callback(Errors.SubmissionFail);
+            if (browser.html()) {
+              return callback(Errors.InternalError);
+            } else {
+              return callback(Errors.SubmissionFail);
+            }
           } else {
             return login((err) => {
               if (err) return callback(err);
               return send(submission, false, callback);
             });
-          }
-        } else if (browser.location.pathname !== STATUS_PATH) {
-          if (browser.html()) {
-            return callback(Errors.InternalError);
-          } else {
-            return callback(Errors.SubmissionFail);
           }
         }
         return getSubmissionId(callback);

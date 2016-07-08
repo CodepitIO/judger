@@ -64,7 +64,7 @@ module.exports = {
     } else if (verdict === 1) {
       // Accepted
       return 1;
-    } else if (verdict < 12) {
+    } else if (verdict < 11) {
       // Rejected
       return 2;
     }
@@ -226,7 +226,7 @@ module.exports = {
         '' : -1,
         'Compilation error' : 4,
         'Runtime error' : 5,
-        'Output limit exceeded' : 7,
+        'Output Limit Exceeded' : 7,
         'Time limit exceeded' : 3,
         'Memory limit exceeded' : 6,
         'Wrong answer' : 2,
