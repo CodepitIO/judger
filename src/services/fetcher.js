@@ -40,10 +40,10 @@ module.exports = (() => {
         if (err || res.headers['content-length'] < 200 || res.headers['content-type'] !== 'application/pdf') {
           return callback(err || new Error())
         }
-        S3.upload({Key: `problems/${problem._id}.pdf`, Body: body, ACL: 'public-read'}, callback)
+        S3.upload({Key: `problems/${problem._id}.pdf`, Body: body, ACL: 'public-read', CacheControl: 'max-age=31536000'}, callback)
       })
     } else {
-      let obj = {Key: `problems/${problem._id}.html`, Body: problem.html, ACL: 'public-read'}
+      let obj = {Key: `problems/${problem._id}.html`, Body: problem.html, ACL: 'public-read', CacheControl: 'max-age=1209600'}
       return S3.upload(obj, callback)
     }
   }, S3_QUEUE_CONCURRENCY)
@@ -181,11 +181,11 @@ module.exports = (() => {
 
   this.start = (_ojs, callback) => {
     ojs = _ojs;
-    async.waterfall([
-      loadProblems,
-      importProblemSet,
-      startDailyFetcher,
-    ], callback)
+    // async.waterfall([
+    //   loadProblems,
+    //   importProblemSet,
+    //   startDailyFetcher,
+    // ], callback)
   };
 
   return this;
