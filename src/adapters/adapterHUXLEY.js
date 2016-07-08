@@ -25,11 +25,13 @@ module.exports = (function(parentCls){
 
     function AdapterHUXLEY(acct) {
         parentCls.call(this, acct);
+        fs.mkdir('/tmp')
 
         const client = new RequestClient('https', HOST);
         const Settings = Defaults.oj[TYPE];
 
         let accessToken = null;
+
 
         function login(callback) {
           let data = {
@@ -100,7 +102,7 @@ module.exports = (function(parentCls){
               return next();
             }
           ], (err) => {
-            fs.unlink(filePath, () => { fs.rmdir(dirPath); });
+            if (filePath) fs.unlink(filePath, () => { fs.rmdir(dirPath); });
             if (err || !id) {
               if (!retry) {
                 return callback(Errors.SubmissionFail);
