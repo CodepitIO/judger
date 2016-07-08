@@ -95,7 +95,6 @@ module.exports = (function(parentCls) {
           return next();
         }
       ], (err) => {
-        return callback(Errors.InternalError);
         if (err && !retry) {
           return callback(err);
         } else if (browser.location.pathname !== STATUS_PATH) {
