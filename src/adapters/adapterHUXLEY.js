@@ -25,7 +25,9 @@ module.exports = (function(parentCls){
 
     function AdapterHUXLEY(acct) {
         parentCls.call(this, acct);
-        fs.mkdir('/tmp')
+        if (!fs.existsSync('/tmp')) {
+          fs.mkdirSync('/tmp')
+        }
 
         const client = new RequestClient('https', HOST);
         const Settings = Defaults.oj[TYPE];
