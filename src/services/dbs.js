@@ -6,7 +6,8 @@ const redis     = require('redis'),
 
 const mongoUrl = `mongodb://mongo:27017/maratonando`;
 
-mongoose.connect(mongoUrl);
+mongoose.Promise = require('bluebird')
+mongoose.connect(mongoUrl)
 
 var redisClient = redis.createClient({
   host: 'redis',
