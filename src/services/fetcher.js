@@ -181,11 +181,11 @@ module.exports = (() => {
 
   this.start = (_ojs, callback) => {
     ojs = _ojs;
-    // async.waterfall([
-    //   loadProblems,
-    //   importProblemSet,
-    //   startDailyFetcher,
-    // ], callback)
+    async.waterfall([
+      loadProblems,
+      importProblemSet,
+      startDailyFetcher,
+    ], callback)
   };
 
   return this;
