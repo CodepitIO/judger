@@ -99,12 +99,22 @@ module.exports = (() => {
     }, callback);
   }
 
+  function decorateProblemFetch(oj, callback) {
+    return callback(null, (done) => {
+      oj.fetchProblems((err, fetched) => {
+        console.log(oj.type)
+        if (err) console.log(err)
+        else console.log(fetched.length + ' problems')
+        return done(err, fetched)
+      })
+    })
+  }
+
   function runProblemFetchers() {
+    console.log('Running daily fetcher...')
     async.waterfall([
       (next) => {
-        async.map(ojs, (oj, callback) => {
-          return callback(null, oj.fetchProblems);
-        }, next);
+        async.map(ojs, decorateProblemFetch, next);
       },
       (fns, next) => {
         async.parallel(fns, next);
@@ -137,11 +147,12 @@ module.exports = (() => {
    *    imported.
    */
   function startDailyFetcher(callback) {
+    console.log('Setting up daily fetcher...')
     let job = new CronJob({
       cronTime: FETCH_PROBLEMS_CRON,
       onTick: runProblemFetchers,
       timeZone: FETCH_PROBLEMS_TZ,
-      runOnInit: (process.env.NODE_ENV === 'development')
+      runOnInit: false && (process.env.NODE_ENV === 'development')
     });
     job.start();
     return callback && callback();

@@ -12,6 +12,8 @@ const SubmissionStatus  = Defaults.submissionStatus;
 
 module.exports = (function() {
   function OnlineJudge(type) {
+    this.type = type;
+
     const Settings = Defaults.oj[type];
     let adapters = [];
     let curAdapter = -1;
