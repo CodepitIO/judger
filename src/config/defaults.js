@@ -344,9 +344,7 @@ module.exports = {
       },
       url: 'http://codeforces.com',
       getProblemPath: (id) => {
-        console.log(id)
         let match = id.match(/(\d+)(.+)/i)
-        console.log(match)
         return '/problemset/problem/' + match[1] + '/' + match[2]
       },
     },
