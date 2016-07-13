@@ -25,8 +25,7 @@ module.exports = (() => {
   let count = 0
 
   function importSaveFail(problem, callback) {
-    problem.importTries++;
-    problem.imported = problem.isPdf = false;
+    if (!problem.imported) problem.importTries++
     console.log(`<<<<<<< Error! ${problem.id} from ${problem.oj}.`)
     return problem.save(() => {
       return callback && callback(Errors.ImportFailed);
@@ -117,12 +116,13 @@ module.exports = (() => {
         async.map(ojs, decorateProblemFetch, next);
       },
       (fns, next) => {
-        async.parallel(fns, next);
+        async.parallel(async.reflectAll(fns), next);
       },
       (problems, next) => {
         problems = _.chain(problems)
-        .reduce((result, value, key) => {
-          return _.concat(result, _.values(value));
+        .reduce((result, elem, key) => {
+          if (_.isArray(elem.value)) return _.concat(result, _.values(elem.value))
+          else return result
         }, [])
         .filter((obj) => {
           return !_.has(allProblems, [obj.oj, obj.id]);
