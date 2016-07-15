@@ -5,7 +5,8 @@ const cheerio = require('cheerio'),
       async   = require('async'),
       path    = require('path'),
       util    = require('util'),
-      _       = require('lodash');
+      _       = require('lodash'),
+      fs      = require('fs');
 
 const Adapter       = require('../adapters/adapter'),
       Defaults      = require('../config/defaults'),
@@ -14,12 +15,14 @@ const Adapter       = require('../adapters/adapter'),
       Util          = require('../utils/util');
 
 const HOST              = "www.codechef.com",
-      SUBMIT_PATH       = "/submit/%s";
+      SUBMIT_PATH       = "/submit/%s",
+      SESSION_LIMIT     = "/session/limit";
 
-const LOGGED_PATTERN          = /edit\s+profile/i,
-      LIMIT_CON_PATTERN       = /maximum\s+number\s+of\s+simultaneous\s+sessions/i,
-      LOGIN_FORM_PATTERN      = /<form([^>]+?id\s*=\s*["']?\w*new-login-form[^>]*)>((?:.|\r|\n)*?)<\/form>/i,
-      SUBMIT_FORM_PATTERN      = /<form([^>]+?id\s*=\s*["']?\w*problem-submission[^>]*)>((?:.|\r|\n)*?)<\/form>/i;
+const LOGGED_PATTERN              = /edit\s+profile/i,
+      LIMIT_CON_PATTERN           = /session\s+to\s+disconnect/i,
+      LOGIN_FORM_PATTERN          = /<form([^>]+?id\s*=\s*["']?\w*new-login-form[^>]*)>((?:.|\r|\n)*?)<\/form>/i,
+      SUBMIT_FORM_PATTERN         = /<form([^>]+?id\s*=\s*["']?\w*problem-submission[^>]*)>((?:.|\r|\n)*?)<\/form>/i,
+      SESSION_LIMIT_FORM_PATTERN  = /<form([^>]+?id\s*=\s*["']?\w*session-limit-page[^>]*)>((?:.|\r|\n)*?)<\/form>/i;
 
 const TYPE = /^adapter(\w+)/i.exec(path.basename(__filename))[1].toLowerCase();
 
@@ -27,8 +30,12 @@ module.exports = ((parentCls) => {
 
   function AdapterCODECHEF(acct) {
     parentCls.call(this, acct);
+    if (!fs.existsSync('/tmp')) {
+      fs.mkdirSync('/tmp')
+    }
 
     const client = new RequestClient('https', HOST);
+    const Settings = Defaults.oj[TYPE];
 
     function login(callback) {
       async.waterfall([
@@ -52,19 +59,58 @@ module.exports = ((parentCls) => {
         }
       ], (err, res, html) => {
         html = html || '';
-        // TODO: deal with multiple logged sessions
-        if (!html.match(LOGGED_PATTERN)) {
-          return callback(Errors.LoginFail);
+        if (!!html.match(LIMIT_CON_PATTERN)) {
+          return handleSessionLimit(html, callback)
         }
-        return callback();
+        if (!html.match(LOGGED_PATTERN)) {
+          return callback(Errors.LoginFail)
+        }
+        return callback()
       });
     };
+
+    function handleSessionLimit(html, callback) {
+      async.forever((next) => {
+        let $ = cheerio.load(html)
+        let sid = $('#session-limit-page .form-radios .form-item input:not(:contains("current"))').first().val()
+        if (!sid) return callback()
+        let f = Util.parseForm(SESSION_LIMIT_FORM_PATTERN, html);
+        if (!f) return callback(Errors.LoginFail)
+        let opts = {
+          followAllRedirects: true,
+          headers: { Referer: 'https://' + HOST, },
+        };
+        f.data.sid = sid;
+        client.post(SESSION_LIMIT, f.data, opts, (err, res, _html) => {
+          html = _html
+          if (err || !html) return callback()
+          fs.writeFileSync('stor.html', html, 'utf8')
+          return next()
+        })
+      }, (err) => {
+        return callback(err)
+      })
+    }
 
     this._login = login;
 
     function send(submission, retry, callback) {
-      console.log('oi');
+      let dirPath, filePath;
+      let langName = _.findKey(Settings.submitLang, (o) => {
+        return o === submission.language;
+      });
+      let fileName = "Main" + Defaults.extensions[langName];
+      let id;
+
       async.waterfall([
+        (next) => {
+          fs.mkdtemp(path.join('/tmp', TYPE), next);
+        },
+        (_dirPath, next) => {
+          dirPath = _dirPath;
+          filePath = path.join(dirPath, fileName);
+          fs.writeFile(filePath, submission.code, next);
+        },
         (next) => {
           client.get(util.format(SUBMIT_PATH, submission.problemId), next);
         },
@@ -72,23 +118,20 @@ module.exports = ((parentCls) => {
           let f, opts;
           try {
             f = Util.parseForm(SUBMIT_FORM_PATTERN, html);
-            console.log(f);
-            if (!f) return next(Errors.SubmissionFail);
             opts = {
               followAllRedirects: true,
-              headers: { Referer: 'https://' + HOST, },
+              headers: { Referer: 'https://' + HOST },
             };
-            f.data.program = submission.code;
-            f.data.filename = '';
+            f.data.program = '';
             f.data.language = submission.language;
+            f.data['files[sourcefile]'] = fs.createReadStream(filePath);
+            delete f.data.op;
           } catch (e) {
-            console.log(e);
             return next(Errors.SubmissionFail);
           }
-          console.log(f);
-          return client.post(f.action, f.data, opts, next);
+          return client.postMultipart(f.action, f.data, opts, next);
         }
-      ], (err, a, b, c) => {
+      ], (err, res, html) => {
         if (err) {
           if (!retry) return callback(err);
           return login((err) => {
@@ -96,41 +139,16 @@ module.exports = ((parentCls) => {
             return send(submission, false, callback);
           });
         }
-        console.log(err);
-        require('fs').writeFileSync('stor.html', b);
-      });
-/*      let data = {
-        localid: submission.problemId,
-        code: submission.code,
-        language: submission.language,
-        codeupl: '',
-        problemid: '',
-        category: '',
-      };
-      let opts = {
-        headers: {
-          Referer: 'https://' + HOST + SUBMIT_PAGE_PATH,
-        },
-      };
-      client.postMultipart(SUBMIT_PATH, data, opts, (err, res, html) => {
-        if (err) return callback(err);
-        html = html || '';
-        if (html.match(NOT_AUTHORIZED_PATTERN)) {
-          if (!retry) {
-            return callback(Errors.SubmissionFail);
-          } else {
-
-          }
-        }
         let id;
         try {
-          id = /([0-9]{6,15})/.exec(res.req.path)[0];
+          id = /\/submit\/complete\/([0-9]{6,15})/.exec(res.req.path)[1];
+          console.log(id)
           assert(id && id.length >= 6);
         } catch (err) {
           return callback(Errors.SubmissionFail);
         }
         return callback(null, id);
-      });*/
+      });
     };
 
     this._send = (submission, callback) => {
