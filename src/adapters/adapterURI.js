@@ -71,7 +71,7 @@ module.exports = (function(parentCls) {
     function send(submission, retry, callback) {
       async.waterfall([
         (next) => {
-          browser.visit("https://" + HOST + SUBMIT_PAGE_PATH).then(next);
+          browser.visit("https://" + HOST + SUBMIT_PAGE_PATH, next)
         },
         (next) => {
           browser
