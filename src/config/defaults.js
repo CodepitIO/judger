@@ -347,6 +347,7 @@ module.exports = {
         let match = id.match(/(\d+)(.+)/i)
         return '/problemset/problem/' + match[1] + '/' + match[2]
       },
+      submissionTTL: 60 * 60 * 1000,
     },
 
     // CODECHEF
