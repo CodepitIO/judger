@@ -31,8 +31,8 @@ module.exports = (function(parentCls) {
   function AdapterCF(acct) {
     parentCls.call(this, acct);
 
-    const browser = new Browser({runScripts: false, waitDuration: "15s"});
-    const client = new RequestClient('http', HOST);
+    let browser = new Browser({runScripts: false});
+    let client = new RequestClient('http', HOST);
 
     function login(callback) {
       async.waterfall([
@@ -99,12 +99,9 @@ module.exports = (function(parentCls) {
           return callback(err);
         } else if (browser.location.pathname !== STATUS_PATH) {
           if (!retry) {
-            if (browser.html()) {
-              return callback(Errors.InternalError);
-            } else {
-              return callback(Errors.SubmissionFail);
-            }
+            return callback(Errors.SubmissionFail);
           } else {
+            browser = new Browser({runScripts: false});
             return login((err) => {
               if (err) return callback(err);
               return send(submission, false, callback);
