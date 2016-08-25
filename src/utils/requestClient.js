@@ -11,6 +11,7 @@ RequestClient.prototype.request = function(opts, callback){
     opts = extend(true, {
         jar: this.jar,
         followAllRedirects: true,
+        rejectUnauthorized: false,
         headers: {
             'Accept-Charset': 'utf-8,ISO-8859-1',
             'Accept-Language': 'en-US,en;q=0.8',

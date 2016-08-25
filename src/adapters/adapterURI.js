@@ -29,7 +29,7 @@ module.exports = (function(parentCls) {
 
     AdapterURI.accessKey = acct.getAccessKey();
 
-    const browser = new Browser({runScripts: false, waitDuration: "30s"});
+    const browser = new Browser({runScripts: false, waitDuration: "30s", strictSSL: false});
     const client = new RequestClient('https', HOST);
 
     function login(callback) {
