@@ -50,7 +50,7 @@ module.exports = (function() {
           async.timeout((callback) => {
             judging = true;
             adapter.addSubmissionHandler(submission, job.progress, callback);
-          }, Settings.submissionTTL || 10 * 60 * 1000)(next);
+          }, Settings.submissionTTL || 30 * 60 * 1000)(next);
         }
       ], (err) => {
         if (judging) {
