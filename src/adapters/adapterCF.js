@@ -31,7 +31,7 @@ module.exports = (function(parentCls) {
   function AdapterCF(acct) {
     parentCls.call(this, acct);
 
-    let browser = new Browser({runScripts: false});
+    let browser = new Browser({runScripts: false, strictSSL: false});
     let client = new RequestClient('http', HOST);
 
     function login(callback) {

@@ -32,7 +32,7 @@ module.exports = (function(parentCls) {
   function AdapterSPOJBR(acct) {
     parentCls.call(this, acct);
 
-    const browser = new Browser({runScripts: false, waitDuration: "15s"});
+    const browser = new Browser({runScripts: false, strictSSL: false});
     const client = new RequestClient('http', HOST);
 
     function login(callback) {
