@@ -119,7 +119,7 @@ module.exports = (function(parentCls) {
     function judge(judgeSet, callback) {
       let submissionsUrl = util.format(SUBMISSIONS_API, acct.getUser(), 30);
       client.get(submissionsUrl, {json: true}, (err, res, data) => {
-        data = data.result;
+        data = data && data.result || [];
         for (let i = 0; i < data.length; i++) {
           if (judgeSet[data[i].id]) {
             judgeSet[data[i].id].verdict = data[i].verdict;
