@@ -212,6 +212,7 @@ module.exports = {
         'cpp' : '3',
         'pascal' : '4',
         'cpp11' : '5',
+        'python': '6',
       },
       verdictId: {
         'Can\'t be judged' : 11,
@@ -251,6 +252,7 @@ module.exports = {
       	'cpp' : '3',
       	'pascal' : '4',
         'cpp11' : '5',
+        'python': '6',
       },
       verdictId: {
         'Can\'t be judged' : 11,
