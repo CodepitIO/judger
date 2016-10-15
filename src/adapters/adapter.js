@@ -7,7 +7,8 @@ const fs    = require('fs'),
       _     = require('lodash');
 
 const Defaults  = require('../config/defaults'),
-      Errors    = require('../utils/errors');
+      Errors    = require('../utils/errors'),
+      Utils     = require('../utils/util');
 
 const SubmissionStatus  = Defaults.submissionStatus;
 
@@ -83,7 +84,7 @@ module.exports = (function() {
       }
       let language = Settings.submitLang[submission.language];
       if (!language) return callback(Errors.InternalError);
-      let code = submission.code + '\n// ' + (new Date()).getTime();
+      let code = Utils.commentCode(submission.code, submission.language);
       let data = {
         language: language,
         code: code,

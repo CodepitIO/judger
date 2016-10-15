@@ -47,7 +47,7 @@ module.exports = {
     'cpp' : '.cpp',
     'pascal' : '.pas',
     'cpp11' : '.cpp',
-    'python' : '.py',
+    'python3' : '.py',
   },
 
   scoreboardStatusName: {
@@ -81,7 +81,7 @@ module.exports = {
         'cpp' : '2',
         'cpp11' : '2',
         'java' : '3',
-        'python' : '5', // 3.4
+        'python3' : '5', // 3.4
       },
       verdictId: {
         'Closed' : 11,
@@ -113,7 +113,7 @@ module.exports = {
         'cpp' : '41',
         'pascal' : '22',
         'cpp11' : '44',
-	      'python' : '116', // 3.4
+	      'python3' : '116', // 3.4
       },
       verdictId: {
         '0' : -1,
@@ -142,7 +142,7 @@ module.exports = {
         'cpp' : '41',
         'pascal' : '22',
         'cpp11' : '44',
-	      'python' : '116', // 3.4
+	      'python3' : '116', // 3.4
       },
       verdictId: {
         '0' : -1,
@@ -171,7 +171,7 @@ module.exports = {
         'cpp' : '26',
         'pascal' : '31',
 	      'cpp11' : '28',
-	      'python' : '35', // 3.4
+	      'python3' : '35', // 3.4
       },
       verdictId: {
         'Can\'t be judged' : 11,
@@ -212,7 +212,7 @@ module.exports = {
         'cpp' : '3',
         'pascal' : '4',
         'cpp11' : '5',
-        'python': '6', // 3.5
+        'python3': '6', // 3.5
       },
       verdictId: {
         'Can\'t be judged' : 11,
@@ -252,7 +252,7 @@ module.exports = {
       	'cpp' : '3',
       	'pascal' : '4',
         'cpp11' : '5',
-        'python': '6', // 3.5
+        'python3': '6', // 3.5
       },
       verdictId: {
         'Can\'t be judged' : 11,
@@ -292,7 +292,7 @@ module.exports = {
         'cpp' : '4',
         'pascal' : '3',
         'cpp11' : '4',
-        'python' : '5',
+        'python3' : '5',
       },
       verdictId: {
         'WAITING' : -3,
@@ -322,7 +322,7 @@ module.exports = {
         'cpp' : '1',
         'pascal' : '4',
         'cpp11' : '42',
-      	'python' : '31', // 3.5
+      	'python3' : '31', // 3.5
       },
       verdictId: {
         'IN_QUEUE': -1,
@@ -361,7 +361,7 @@ module.exports = {
         'cpp' : '1',
         'pascal' : '2',
         'cpp11' : '44',
-        'python' : '116', // 3.4
+        'python3' : '116', // 3.4
       },
       verdictId: {
         'WAITING' : -3,

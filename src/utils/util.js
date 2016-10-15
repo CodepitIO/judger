@@ -36,6 +36,16 @@ obj.getLang = function(fileExt){
     return -1;
 };
 
+obj.commentCode = function(code, lang) {
+  if (lang === 'python3') {
+    return code + '\n# ' + (new Date()).getTime();
+  }
+  if (lang == 'c') {
+    return code + '\n/* ' + (new Date()).getTime() + ' */';
+  }
+  return code + '\n// ' + (new Date()).getTime();
+};
+
 obj.getLangName = function(lang){
     lang = parseInt(lang);
     switch(lang)
