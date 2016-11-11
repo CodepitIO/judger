@@ -38,13 +38,14 @@ module.exports = (function() {
       delete judgeSet[submission.oj_id];
     }
 
-    this.login = () => {
+    this.login = (callback) => {
       async.retry({times: 5, interval: 2000}, this._login, (err) => {
         if (err) {
           console.log(`Unable to log to ${acct.getType()} with account ${acct.getUser()}.`);
         } else {
           console.log(`Logged in on ${acct.getType()} with account ${acct.getUser()}.`);
         }
+        return callback && callback();
       });
     }
 
