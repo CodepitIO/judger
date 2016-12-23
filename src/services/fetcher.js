@@ -76,7 +76,7 @@ module.exports = (() => {
   function shouldImport(problem) {
     let daysSinceImport = Math.round(
       (new Date() - (problem.importDate || 0)) / (24 * 60 * 60 * 1000));
-    return (problem.imported && daysSinceImport > 30) ||
+    return (problem.imported && daysSinceImport > 90) ||
            (!problem.imported && problem.importTries < 10);
   }
 
