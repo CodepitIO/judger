@@ -195,7 +195,7 @@ module.exports = (function(parentCls) {
             data = data.replace(/<strong>\s*<br>/, '<strong>');
             item.html(data);
           });
-          data.html = tmpl({description: description.html()})
+          data.html = tmpl({description: description.html()});
         } catch (err) {
           return callback(err);
         }

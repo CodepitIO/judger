@@ -60,6 +60,7 @@ module.exports = (() => {
           }
           count++
           console.log(`${count}: Imported ${problem.id} from ${problem.oj} (${details.Location}).`)
+          problem.importDate = new Date()
           problem.imported = true
           problem.url = details.Location
           problem.html = undefined
@@ -73,7 +74,10 @@ module.exports = (() => {
   }
 
   function shouldImport(problem) {
-    return !problem.imported && problem.importTries < 10;
+    let daysSinceImport = Math.round(
+      (new Date() - (problem.importDate || 0)) / (24 * 60 * 60 * 1000));
+    return (problem.imported && daysSinceImport > 30) ||
+           (!problem.imported && problem.importTries < 10);
   }
 
   function importProblemSet(problems, callback) {
