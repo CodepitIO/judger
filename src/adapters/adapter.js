@@ -13,13 +13,13 @@ const Defaults  = require('../config/defaults'),
 const SubmissionStatus  = Defaults.submissionStatus;
 
 // Maps from typeName to class function
-let subClasses = {}; // private static field
-let normNames = {}; // normalize the type name
+let AdapterService = {};
+let AdapterConfig = {};
 
 module.exports = (function() {
   // constructor
   function Adapter(acct) {
-    const Settings = Defaults.oj[acct.getType()];
+    const Config = AdapterConfig[acct.getType()];
 
     let lastSubmission = 0;
     let judgeSet = {};
@@ -56,8 +56,8 @@ module.exports = (function() {
             for (let id in judgeSet) {
               let verdict = judgeSet[id].verdict;
               let submission = judgeSet[id].submission;
-              if (verdict != null && Settings.verdictId[verdict] != null) {
-                verdict = Settings.verdictId[verdict];
+              if (verdict != null && Config.verdictId[verdict] != null) {
+                verdict = Config.verdictId[verdict];
                 if (submission.verdict !== verdict && verdict !== SubmissionStatus.SUBMISSION_ERROR) {
                   submission.verdict = verdict;
                   judgeSet[id].progress({verdict: verdict});
@@ -82,7 +82,7 @@ module.exports = (function() {
       if (!submission || !submission.language) {
         return callback(Errors.InternalError)
       }
-      let language = Settings.submitLang[submission.language];
+      let language = Config.submitLang[submission.language];
       if (!language) return callback(Errors.InternalError);
       let code = Utils.commentCode(submission.code, submission.language);
       let data = {
@@ -90,7 +90,7 @@ module.exports = (function() {
         code: code,
         problemId: submission.problem.id,
       };
-      let interval = Settings.intervalPerAdapter || 0;
+      let interval = Config.intervalPerAdapter || 0;
       let currentTime = (new Date()).getTime();
       let waitTime = Math.max(0, interval - (currentTime - lastSubmission));
       lastSubmission = currentTime + waitTime;
@@ -103,13 +103,13 @@ module.exports = (function() {
 
   // public static methods
   Adapter.create = (acct) => {
-    let clsFn = subClasses[acct.type];
+    let clsFn = AdapterService[acct.type];
     if (clsFn) return new clsFn(acct);
     return null;
   };
 
   Adapter.fetchProblems = (type, callback) => {
-    return subClasses[type].fetchProblems(callback);
+    return AdapterService[type].fetchProblems(callback);
   }
 
   (function (obj) {
@@ -118,14 +118,14 @@ module.exports = (function() {
     function getOrCreateQueue(type) {
       if (!importQueues[type]) {
         importQueues[type] = async.queue((problem, callback) => {
-          if (subClasses[type].import) {
+          if (AdapterService[type].import) {
             // We wait at most 2 minutes to import a problem
             return async.timeout((callback) => {
-              subClasses[type].import(problem, callback);
+              AdapterService[type].import(problem, callback);
             }, 2 * 60 * 1000)(callback);
           }
           return async.setImmediate(callback, Errors.NoImportForOJ);
-        }, Defaults.oj[type].maxImportWorkers || 3);
+        }, AdapterConfig[type].maxImportWorkers || 3);
       }
       return importQueues[type];
     }
@@ -139,16 +139,22 @@ module.exports = (function() {
 })();
 
 /*
- * Auto load the subclasses
+ * Auto load the adapters
  */
 (function(){
   let files = fs.readdirSync(__dirname);
   for (let i=0; i < files.length; i++) {
-    let match = /^adapter(\w+)/i.exec(files[i]);
-    if (!match) continue;
-    let modName = match[1];
-    let lower = modName.toLowerCase();
-    normNames[lower] = modName;
-    subClasses[lower] = require('./'+files[i]);
+    try {
+      let oj = files[i];
+      let ojDir = path.join(__dirname, oj);
+      let stat = fs.statSync(ojDir);
+      if (stat.isDirectory() && !oj.startsWith('_')) {
+        AdapterConfig[oj] = require(path.join(ojDir, 'config'));
+        AdapterService[oj] = require(path.join(ojDir, 'service'));
+        console.log(`Loaded ${AdapterConfig[oj].name} adapter`);
+      }
+    } catch (e) {
+      console.log(e);
+    }
   }
 })();

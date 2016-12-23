@@ -4,7 +4,6 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const errors = require('./errors');
-const Defaults = require('../config/defaults');
 
 const LANG_C      = 1;
 const LANG_JAVA   = 2;
@@ -61,15 +60,18 @@ obj.getLangName = function(lang){
 };
 
 obj.adjustImgSrcs = function($, oj) {
+  const ojUrl = require(`../adapters/${oj}/config.js`).url;
   $('img').each((i, elem) => {
     elem = $(elem);
     let link = elem.attr('src');
+    if (!link) return;
     if (link[0] === '/' || link[0] === '.') {
-      let imgSrc = Defaults.oj[oj].url;
+      let imgSrc = ojUrl;
       if (link[0] === '.') imgSrc += '/';
       imgSrc += link;
       elem.attr('src', imgSrc);
-    } else {
+    }
+    if (oj === 'spoj' || oj === 'spojbr') {
       elem.attr('src', link.replace('spoj.pl', 'spoj.com'));
     }
   });

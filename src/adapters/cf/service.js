@@ -8,11 +8,11 @@ const path    = require('path'),
       util    = require('util'),
       _       = require('lodash');
 
-const Adapter       = require('../adapters/adapter'),
-      Defaults      = require('../config/defaults'),
-      Errors        = require('../utils/errors'),
-      RequestClient = require('../utils/requestClient'),
-      Util          = require('../utils/util');
+const Adapter       = require('../adapter'),
+      Config        = require('./config'),
+      Errors        = require('../../utils/errors'),
+      RequestClient = require('../../utils/requestClient'),
+      Util          = require('../../utils/util');
 
 const HOST              = "codeforces.com",
       LOGIN_PAGE_PATH   = "/enter",
@@ -24,7 +24,7 @@ const HOST              = "codeforces.com",
 const LOGIN_TEST_REGEX      = /logout/i,
       LLD_REGEX             = /preferred\s+to\s+use\s+cin/i;
 
-const TYPE = /^adapter(\w+)/i.exec(path.basename(__filename))[1].toLowerCase();
+const TYPE = path.basename(__dirname);
 
 module.exports = (function(parentCls) {
 
@@ -141,7 +141,7 @@ module.exports = (function(parentCls) {
     const TIMELIMIT_PATTERN = /([\d.,]+)?\s*seconds?/i;
 
     obj.import = (problem, callback) => {
-      let url = Defaults.oj[TYPE].getProblemPath(problem.id);
+      let url = Config.getProblemPath(problem.id);
       client.get(url, (err, res, html) => {
         if (err) return callback(err);
         let data = {};

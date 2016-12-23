@@ -2,8 +2,6 @@
 
 const mongoose = require('mongoose')
 
-const Defaults = require('../config/defaults').oj
-
 let problemSchema = mongoose.Schema({
   id: String,
   name: String,
@@ -44,14 +42,15 @@ problemSchema.post('save', (problem, next) => {
   let oj = problem.oj
   let id = problem.id
   let name = problem.name
-  problem.fullName = "[" + Defaults[oj].name + " " + id + "] " + name
+  const OJConfig = require(`../adapters/${oj}/config.js`);
+  problem.fullName = "[" + OJConfig.name + " " + id + "] " + name
   if (!problem.url) {
-    problem.url = Defaults[oj].url + Defaults[oj].getProblemPath(id)
+    problem.url = OJConfig.url + OJConfig.getProblemPath(id)
   }
   if (problem.isPdf) {
-    problem.originalUrl = Defaults[oj].url + Defaults[oj].getProblemPdfPath(id)
+    problem.originalUrl = OJConfig.url + OJConfig.getProblemPdfPath(id)
   } else {
-    problem.originalUrl = Defaults[oj].url + Defaults[oj].getProblemPath(id)
+    problem.originalUrl = OJConfig.url + OJConfig.getProblemPath(id)
   }
   problem.save(next)
 })

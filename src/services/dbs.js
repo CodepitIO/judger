@@ -27,4 +27,6 @@ exports.createRedisClient = () => {
   });
 }
 
-exports.S3 = new aws.S3({params: {Bucket: 'codepit'}})
+let bucket = (process.env.NODE_ENV !== 'development') ?
+  'codepit' : 'codepit-dev';
+exports.S3 = new aws.S3({params: {Bucket: bucket}})

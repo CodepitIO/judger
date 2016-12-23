@@ -8,15 +8,13 @@ const CronJob = require('cron').CronJob,
 
 const Problem   = require('../models/problem'),
       Errors    = require('../utils/errors'),
-      S3        = require('./dbs').S3,
-      Defaults = require('../config/defaults').oj
+      S3        = require('./dbs').S3
 
 const LOAD_AND_IMPORT_INTERVAL = 24 * 60 * 60 * 1000
 const S3_QUEUE_CONCURRENCY = 10
 
 const FETCH_PROBLEMS_CRON = '00 00 03 * * *';
 const FETCH_PROBLEMS_TZ = 'America/Recife';
-const S3_PROBLEM_URL = 'https://%s.s3.amazonaws.com/%s';
 
 module.exports = (() => {
   let allProblems = {};
@@ -33,8 +31,9 @@ module.exports = (() => {
   }
 
   let uploadToS3Queue = async.queue((problem, callback) => {
+    const OJConfig = require(`../adapters/${problem.oj}/config.js`);
     if (problem.isPdf) {
-      let url = Defaults[problem.oj].url + Defaults[problem.oj].getProblemPdfPath(problem.id)
+      let url = OJConfig.url + OJConfig.getProblemPdfPath(problem.id)
       request({url: url, encoding: null}, (err, res, body) => {
         if (err || res.headers['content-length'] < 200 || res.headers['content-type'] !== 'application/pdf') {
           return callback(err || new Error())

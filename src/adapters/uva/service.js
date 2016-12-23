@@ -8,11 +8,11 @@ const cheerio = require('cheerio'),
       iconv   = require('iconv-lite'),
       _       = require('lodash');
 
-const Adapter       = require('../adapters/adapter'),
-      Defaults      = require('../config/defaults'),
-      Errors        = require('../utils/errors'),
-      RequestClient = require('../utils/requestClient'),
-      Util          = require('../utils/util');
+const Adapter       = require('../adapter'),
+      Config        = require('./config'),
+      Errors        = require('../../utils/errors'),
+      RequestClient = require('../../utils/requestClient'),
+      Util          = require('../../utils/util');
 
 const HOST              = "uva.onlinejudge.org",
       SUBMIT_PAGE_PATH  = "/index.php?option=com_onlinejudge&Itemid=25",
@@ -23,7 +23,7 @@ const LOGGED_PATTERN          = /My\s+Account/i,
       LOGIN_FORM_PATTERN      = /<form([^>]+?id\s*=\s*["']?\w*mod_loginform[^>]*)>((?:.|\r|\n)*?)<\/form>/i,
       NOT_AUTHORIZED_PATTERN  = /not\s+authori[zs]ed/i;
 
-const TYPE = /^adapter(\w+)/i.exec(path.basename(__filename))[1].toLowerCase();
+const TYPE = path.basename(__dirname);
 
 module.exports = ((parentCls) => {
 
@@ -151,7 +151,7 @@ module.exports = ((parentCls) => {
       $('img').each((i, elem) => {
         elem = $(elem);
         let vol = parseInt(id / 100);
-        let imgUrl = `${Defaults.oj[TYPE].url}/external/${vol}/${elem.attr('src')}`;
+        let imgUrl = `${Config.url}/external/${vol}/${elem.attr('src')}`;
         elem.attr('src', imgUrl);
       });
       $('a').each((i, elem) => {
@@ -183,7 +183,7 @@ module.exports = ((parentCls) => {
 
     obj.import = (problem, callback) => {
       let metadataUrl = util.format(PROBLEM_METADATA_API, problem.id);
-      let problemUrl = Defaults.oj[TYPE].getProblemPath(problem.id);
+      let problemUrl = Config.getProblemPath(problem.id);
       async.parallel({
         meta: (next) => {
           return client.get(metadataUrl, {json: true}, next)
@@ -197,7 +197,6 @@ module.exports = ((parentCls) => {
         try {
           let tl = results.meta[1] && results.meta[1].rtl || 3000;
           data.timelimit = tl / 1000.0;
-          data.memorylimit = '128 MB';
           let html = iconv.decode(results.body[1], 'ISO-8859-1')
           data.isPdf = (_.includes(html, "HTTP-EQUIV") && html.length <= 200)
           if (!data.isPdf) getContent(data, html, problem.id)

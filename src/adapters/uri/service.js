@@ -7,11 +7,11 @@ const path    = require('path'),
       cheerio = require('cheerio'),
       _       = require('lodash');
 
-const Adapter       = require('../adapters/adapter'),
-      RequestClient = require('../utils/requestClient'),
-      Errors        = require('../utils/errors'),
-      Defaults      = require('../config/defaults'),
-      Util          = require('../utils/util');
+const Adapter       = require('../adapter'),
+      Config        = require('./config'),
+      RequestClient = require('../../utils/requestClient'),
+      Errors        = require('../../utils/errors'),
+      Util          = require('../../utils/util');
 
 const HOST                  = "www.urionlinejudge.com.br",
       LOGIN_PAGE_PATH       = "/judge/pt/login",
@@ -20,7 +20,7 @@ const HOST                  = "www.urionlinejudge.com.br",
 
 const LOGIN_TEST_REGEX = /Perfil/i;
 
-const TYPE = /^adapter(\w+)/i.exec(path.basename(__filename))[1].toLowerCase();
+const TYPE = path.basename(__dirname);
 
 module.exports = (function(parentCls) {
 
@@ -127,7 +127,7 @@ module.exports = (function(parentCls) {
     const TIMELIMIT_PATTERN = /Timelimit:\s+([\d.,]+)/;
 
     obj.import = (problem, callback) => {
-      let url = Defaults.oj[TYPE].getProblemPath(problem.id);
+      let url = Config.getProblemPath(problem.id);
       client.get(url, (err, res, html) => {
         if (err) return callback(err);
         let data = {};

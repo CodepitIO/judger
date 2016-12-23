@@ -14,11 +14,12 @@ module.exports = (function() {
   function OnlineJudge(type) {
     this.type = type;
 
-    const Settings = Defaults.oj[type];
+    const Config = require(`../adapters/${type}/config`);
     let adapters = [];
     let curAdapter = -1;
 
     function getNext() {
+      if (adapters.length === 0) return null;
       curAdapter = (curAdapter+1) % adapters.length;
       return adapters[curAdapter];
     }
@@ -50,7 +51,7 @@ module.exports = (function() {
           async.timeout((callback) => {
             judging = true;
             adapter.addSubmissionHandler(submission, job.progress, callback);
-          }, Settings.submissionTTL || 30 * 60 * 1000)(next);
+          }, Config.submissionTTL || 30 * 60 * 1000)(next);
         }
       ], (err) => {
         if (judging) {
@@ -73,18 +74,21 @@ module.exports = (function() {
     }
 
     this.start = () => {
-      for (let i in adapters) {
-        adapters[i].start();
+      if (adapters.length > 0) {
+        for (let i in adapters) {
+          adapters[i].start();
+        }
+        SubmissionQueue.process(
+          `submission:${type}`,
+          Config.maxPendingSubmissions || 6,
+          handleSubmission
+        );
       }
-      SubmissionQueue.process(
-        `submission:${type}`,
-        Settings.maxPendingSubmissions || 6,
-        handleSubmission
-      );
     }
 
     this.addAccount = (acct) => {
-      adapters.push(Adapter.create(acct));
+      let newAdapter = Adapter.create(acct);
+      if (newAdapter) adapters.push(newAdapter);
     }
 
     this.fetchProblems = Adapter.fetchProblems.bind(null, type);

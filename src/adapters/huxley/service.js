@@ -6,10 +6,11 @@ const fs        = require('fs'),
       util      = require('util'),
       _         = require('lodash')
 
-const Adapter       = require('../adapters/adapter'),
-      Errors        = require('../utils/errors'),
-      RequestClient = require('../utils/requestClient'),
-      Defaults      = require('../config/defaults')
+const Adapter       = require('../adapter'),
+      Errors        = require('../../utils/errors'),
+      RequestClient = require('../../utils/requestClient'),
+      Defaults      = require('../../config/defaults'),
+      Config        = require('./config')
 
 const HOST              = 'www.thehuxley.com',
       AUTH_PATH         = '/auth/oauth/token',
@@ -19,7 +20,7 @@ const HOST              = 'www.thehuxley.com',
 const SUBMIT_FORM_PATTERN = /<form([^>]+?)>((?:.|\n)*?)<\/form>/i,
       INPUT_PATTERN       = /<input([^>]+?)\/?>/gi;
 
-const TYPE = /^adapter(\w+)/i.exec(path.basename(__filename))[1].toLowerCase();
+const TYPE = path.basename(__dirname);
 
 module.exports = (function(parentCls){
 
@@ -30,7 +31,6 @@ module.exports = (function(parentCls){
         }
 
         const client = new RequestClient('https', HOST);
-        const Settings = Defaults.oj[TYPE];
 
         let accessToken = null;
 
@@ -66,7 +66,7 @@ module.exports = (function(parentCls){
 
         function send(submission, retry, callback) {
           let dirPath, filePath;
-          let langName = _.findKey(Settings.submitLang, (o) => {
+          let langName = _.findKey(Config.submitLang, (o) => {
             return o === submission.language;
           });
           let fileName = "Main" + Defaults.extensions[langName];
@@ -151,7 +151,7 @@ module.exports = (function(parentCls){
       const PROBLEM_PATH_UNF = "/api/v1/problems/%s";
       const EXAMPLES_PATH_UNF = "/api/v1/problems/%s/examples?max=10";
 
-      const tmplPath = './src/adapters/resources/huxley_template.html';
+      const tmplPath = './src/adapters/huxley/problem_template.html';
       const tmpl = _.template(fs.readFileSync(tmplPath, 'utf8'));
 
       obj.import = (problem, callback) => {
