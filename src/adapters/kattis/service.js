@@ -195,7 +195,7 @@ module.exports = ((parentCls) => {
           if (match = header.text().match(SOURCE_PATTERN)) {
             src2 = _.trim(match[1]);
           }
-          let source = (src1 && src2) ? `${src1} (${src2})` : src1 || src2;
+          data.source = (src1 && src2) ? `${src1} (${src2})` : src1 || src2;
           data.html =
             '<div id="kattis" class="kattis-problem">' +
               $('.problembody').html() +
