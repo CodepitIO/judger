@@ -91,7 +91,9 @@ module.exports = ((parentCls) => {
             f.data['sub_code'] = submission.code;
             f.data['language'] = submission.language;
             f.data['type'] = 'editor';
-            f.data['mainclass'] = 'Main';
+            if (submission.language === 'Java') {
+              f.data['mainclass'] = 'Main';
+            }
             opts = {
               followAllRedirects: true,
               headers: { Referer: 'https://' + HOST, },
