@@ -13,7 +13,7 @@ const Adapter       = require('../adapter'),
       Config        = require('./config')
 
 const HOST              = 'www.thehuxley.com',
-      AUTH_PATH         = '/auth/oauth/token',
+      AUTH_PATH         = '/api/login',
       SUBMIT_PATH       = '/api/v1/user/problems/%s/submissions',
       SUBMISSIONS_PATH  = '/api/v1/submissions?max=20';
 
@@ -34,19 +34,14 @@ module.exports = (function(parentCls){
 
         let accessToken = null;
 
-
         function login(callback) {
           let data = {
-            client_id: 'ui',
-            grant_type: 'password',
-            scope: 'write',
             username: acct.getUser(),
             password: acct.getPass(),
           };
           let opts = {
-            headers: {
-              'Authorization': 'Basic dWk6'
-            },
+            body: JSON.stringify(data),
+            form: '',
           };
 	        client.post(AUTH_PATH, data, opts, (err, res, data) => {
             try {
@@ -124,7 +119,12 @@ module.exports = (function(parentCls){
         }
 
         function judge(judgeSet, callback) {
-          client.get(SUBMISSIONS_PATH, {}, (err, res, data) => {
+          let opts = {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`
+            },
+          };
+          client.get(SUBMISSIONS_PATH, opts, (err, res, data) => {
             try {
               data = JSON.parse(data);
             } catch (e) {
