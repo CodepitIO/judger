@@ -195,10 +195,7 @@ module.exports = (() => {
   }
 
   this.start = (_ojs, callback) => {
-    ojs = {
-      'codechef': _ojs.codechef,
-    }
-    console.log(ojs);
+    ojs = _ojs;
     async.waterfall([
       loadProblems,
       importProblemSet,
