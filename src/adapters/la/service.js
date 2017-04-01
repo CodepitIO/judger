@@ -14,8 +14,7 @@ const Adapter       = require('../adapter'),
       RequestClient = require('../../utils/requestClient'),
       Util          = require('../../utils/util');
 
-const HOST              = "icpcarchive.ecs.baylor.edu",
-      SUBMIT_PAGE_PATH  = "/index.php?option=com_onlinejudge&Itemid=25",
+const SUBMIT_PAGE_PATH  = "/index.php?option=com_onlinejudge&Itemid=25",
       SUBMIT_PATH       = "/index.php?option=com_onlinejudge&Itemid=25&page=save_submission",
       SUBMISSIONS_PATH  = "/index.php?option=com_onlinejudge&Itemid=9";
 
@@ -30,7 +29,7 @@ module.exports = ((parentCls) => {
   function AdapterLA(acct) {
     parentCls.call(this, acct);
 
-    const client = new RequestClient('https', HOST);
+    const client = new RequestClient(Config.url);
 
     function login(callback) {
       async.waterfall([
@@ -45,7 +44,7 @@ module.exports = ((parentCls) => {
             f.data[f.passField] = acct.getPass();
             opts = {
               followAllRedirects: true,
-              headers: { Referer: 'https://' + HOST, },
+              headers: { Referer: Config.url, },
             };
           } catch (e) {
             return next(Errors.SubmissionFail, res, html);
@@ -74,7 +73,7 @@ module.exports = ((parentCls) => {
       };
       let opts = {
         headers: {
-          Referer: 'https://' + HOST + SUBMIT_PAGE_PATH,
+          Referer: Config.url + SUBMIT_PAGE_PATH,
         },
       };
       client.postMultipart(SUBMIT_PATH, data, opts, (err, res, html) => {
@@ -136,9 +135,9 @@ module.exports = ((parentCls) => {
   (function(obj) {
     const VOLUMES = ["/index.php?option=com_onlinejudge&Itemid=8&category=1"];
     const PROBLEM_PATTERN = /^(\d+)\s*-\s*(.*)/i;
-    const client = new RequestClient('https', HOST);
+    const client = new RequestClient(Config.url);
 
-    const PROBLEM_METADATA_API = "https://icpcarchive.ecs.baylor.edu/uhunt/api/p/num/%s";
+    const PROBLEM_METADATA_API = Config.url + "/uhunt/api/p/num/%s";
 
     function getContent(data, html, id) {
       if (!_.includes(html, '<body>')) {
@@ -146,19 +145,9 @@ module.exports = ((parentCls) => {
       }
       html = html.replace(/(<)([^a-zA-Z\s\/\\!])/g, '&lt;$2');
       let $ = cheerio.load(html);
-      $('img').each((i, elem) => {
-        elem = $(elem);
-        let vol = parseInt(id / 100);
-        let imgUrl = `${Config.url}/external/${vol}/${elem.attr('src')}`;
-        elem.attr('src', imgUrl);
-      });
-      $('a').each((i, elem) => {
-        elem = $(elem);
-        let href = elem.attr('href')
-        if (href && href[0] === '/') {
-          elem.attr('href', '//' + HOST + href)
-        }
-      });
+      let vol = parseInt(id / 100);
+      Util.adjustImgSrcs($, `${Config.url}/external/${vol}/`);
+      Util.adjustAnchors($, `${Config.url}/external/${vol}/`);
       $('table[bgcolor="#0060F0"]').first().remove();
       $('h1').first().remove();
       $('h2').each((i, item) => {
@@ -193,6 +182,7 @@ module.exports = ((parentCls) => {
         if (err) return callback(err);
         let data = {};
         try {
+          data.supportedLangs = Config.getSupportedLangs();
           let tl = results.meta[1] && results.meta[1].rtl || 3000;
           data.timelimit = tl / 1000.0;
           data.memorylimit = '128 MB';

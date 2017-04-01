@@ -13,8 +13,7 @@ const Adapter       = require('../adapter'),
       Errors        = require('../../utils/errors'),
       Util          = require('../../utils/util');
 
-const HOST                  = "www.urionlinejudge.com.br",
-      LOGIN_PAGE_PATH       = "/judge/pt/login",
+const LOGIN_PAGE_PATH       = "/judge/pt/login",
       SUBMIT_PAGE_PATH      = "/judge/pt/runs/add",
       SUBMISSIONS_API_UNF   = "/judge/maratonando/%s/runs/%s";
 
@@ -30,12 +29,12 @@ module.exports = (function(parentCls) {
     AdapterURI.accessKey = acct.getAccessKey();
 
     const browser = new Browser({runScripts: false, strictSSL: false});
-    const client = new RequestClient('https', HOST);
+    const client = new RequestClient(Config.url);
 
     function login(callback) {
       async.waterfall([
         (next) => {
-          browser.visit("https://" + HOST + LOGIN_PAGE_PATH, next);
+          browser.visit(Config.url + LOGIN_PAGE_PATH, next);
         },
         (next) => {
           browser
@@ -71,7 +70,7 @@ module.exports = (function(parentCls) {
     function send(submission, retry, callback) {
       async.waterfall([
         (next) => {
-          browser.visit("https://" + HOST + SUBMIT_PAGE_PATH, next)
+          browser.visit(Config.url + SUBMIT_PAGE_PATH, next)
         },
         (next) => {
           browser
@@ -122,26 +121,21 @@ module.exports = (function(parentCls) {
   (function(obj) {
     const PROBLEMSET_API_UNF = "/judge/maratonando/%s/problems";
 
-    const client = new RequestClient('https', HOST);
+    const client = new RequestClient(Config.url);
 
     const TIMELIMIT_PATTERN = /Timelimit:\s+([\d.,]+)/;
 
     obj.import = (problem, callback) => {
-      let url = Config.getProblemPath(problem.id);
-      client.get(url, (err, res, html) => {
+      let urlPath = Config.getProblemPath(problem.id);
+      client.get(urlPath, (err, res, html) => {
         if (err) return callback(err);
         let data = {};
         try {
+          data.supportedLangs = Config.getSupportedLangs();
           html = html.replace(/(<)([^a-zA-Z\s\/\\!])/g, '&lt;$2');
           let $ = cheerio.load(html);
-          Util.adjustImgSrcs($, TYPE);
-          $('a').each((i, elem) => {
-            elem = $(elem);
-            let href = elem.attr('href')
-            if (href && href[0] === '/') {
-              elem.attr('href', '//' + HOST + href)
-            }
-          });
+          Util.adjustImgSrcs($, Config.url);
+          Util.adjustAnchors($, Config.url);
           $('script').remove();
           data.source = $('div.header p').html();
           let tl = $.html().match(TIMELIMIT_PATTERN);

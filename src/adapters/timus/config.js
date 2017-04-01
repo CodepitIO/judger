@@ -1,3 +1,5 @@
+const SUPPORTED_LANGS = ['c', 'cpp', 'cpp11', 'cpp14', 'java', 'python2.7', 'python3'];
+
 module.exports = {
   name: 'Timus',
   submitLang: {
@@ -37,5 +39,6 @@ module.exports = {
   getProblemPath: (id) => {
     return '/print.aspx?space=1&num=' + id;
   },
+  getSupportedLangs: () => SUPPORTED_LANGS,
   intervalPerAdapter: 6000,
 }

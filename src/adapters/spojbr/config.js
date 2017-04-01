@@ -1,3 +1,27 @@
+const _ = require('lodash')
+
+const SUPPORTED_LANGS = {
+    'C-CLANG': 'c',
+    'C': 'c',
+    'CPP': 'cpp',
+    'C++': 'cpp',
+    'CPP14-CLANG': ['cpp11', 'cpp14', 'cpp'],
+    'CPP14': ['cpp11', 'cpp14', 'cpp'],
+    'JAVA': 'java',
+    'PYTHON': 'python2.7',
+    'PYTHON3': 'python3',
+}
+
+function getContained(langString) {
+  return _.chain(langString)
+    .split(' ')
+    .filter((o) => !!SUPPORTED_LANGS[o])
+    .map((o) => SUPPORTED_LANGS[o])
+    .flatten()
+    .uniq()
+    .value();
+}
+
 module.exports = {
   name: 'SpojBR',
   submitLang: {
@@ -8,9 +32,6 @@ module.exports = {
     'java'      : '10',
     'python2.7' : '4',
     'python3'   : '116',
-    // 'haskell'  : '21',
-    // 'pascal'  : '22',
-    // 'go'    : '114',
   },
   verdictId: {
     '0' : -1,
@@ -27,5 +48,12 @@ module.exports = {
   url: 'http://br.spoj.com',
   getProblemPath: (id) => {
     return '/problems/' + id;
+  },
+  getSupportedLangs: (langString) => {
+    if (langString && !_.startsWith(langString, 'Todas')) {
+      return getContained(langString);
+    }
+    let accepted = _.chain(SUPPORTED_LANGS).values().flatten().uniq().value();
+    return _.difference(accepted, langString);
   },
 }

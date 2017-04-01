@@ -1,3 +1,5 @@
+const SUPPORTED_LANGS = ['c', 'cpp', 'cpp11', 'java', 'python2.7', 'python3'];
+
 module.exports = {
   name: 'Huxley',
   submitLang: {
@@ -22,8 +24,9 @@ module.exports = {
     'EMPTY_TEST_CASE' : 11,
     'HUXLEY_ERROR' : 11,
   },
-  url: 'http://www.thehuxley.com',
+  url: 'https://www.thehuxley.com',
   getProblemPath: (id) => {
     return '/problem/' + id;
   },
+  getSupportedLangs: () => SUPPORTED_LANGS,
 }

@@ -1,3 +1,5 @@
+const SUPPORTED_LANGS = ['c', 'cpp', 'cpp11', 'java', 'python2.7', 'python3'];
+
 module.exports = {
   name: 'Codeforces',
   submitLang: {
@@ -8,9 +10,6 @@ module.exports = {
     'java'      : '36',
     'python2.7' : '7',
     'python3'   : '31',
-    // 'pascal'  : '4',
-    // 'haskell'  : '12',
-    // 'go'    : '32',
   },
   verdictId: {
     'IN_QUEUE': -1,
@@ -37,5 +36,6 @@ module.exports = {
     let match = id.match(/(\d+)(.+)/i)
     return '/problemset/problem/' + match[1] + '/' + match[2]
   },
+  getSupportedLangs: () => SUPPORTED_LANGS,
   submissionTTL: 60 * 60 * 1000,
 }

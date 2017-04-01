@@ -1,3 +1,5 @@
+const SUPPORTED_LANGS = ['c', 'cpp', 'cpp11', 'java', 'python3'];
+
 module.exports = {
   name: 'Kattis',
   submitLang: {
@@ -24,4 +26,5 @@ module.exports = {
   getProblemPath: (id) => {
     return `/problems/${id}`;
   },
+  getSupportedLangs: () => SUPPORTED_LANGS,
 }
