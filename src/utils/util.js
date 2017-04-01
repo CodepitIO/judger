@@ -59,20 +59,29 @@ obj.getLangName = function(lang){
     return '?';
 };
 
-obj.adjustImgSrcs = function($, oj) {
-  const ojUrl = require(`../adapters/${oj}/config.js`).url;
+obj.adjustImgSrcs = function($, url) {
   $('img').each((i, elem) => {
     elem = $(elem);
     let link = elem.attr('src');
     if (!link) return;
     if (link[0] === '/' || link[0] === '.') {
-      let imgSrc = ojUrl;
+      let imgSrc = url;
       if (link[0] === '.') imgSrc += '/';
       imgSrc += link;
       elem.attr('src', imgSrc);
     }
-    if (oj === 'spoj' || oj === 'spojbr') {
+    if (link.indexOf('spoj.pl') > -1) {
       elem.attr('src', link.replace('spoj.pl', 'spoj.com'));
+    }
+  });
+}
+
+obj.adjustAnchors = function($, host) {
+  $('a').each((i, elem) => {
+    elem = $(elem);
+    let href = elem.attr('href')
+    if (href && href[0] === '/') {
+      elem.attr('href', '//' + host + href)
     }
   });
 }

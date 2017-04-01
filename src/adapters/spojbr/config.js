@@ -8,9 +8,6 @@ module.exports = {
     'java'      : '10',
     'python2.7' : '4',
     'python3'   : '116',
-    // 'haskell'  : '21',
-    // 'pascal'  : '22',
-    // 'go'    : '114',
   },
   verdictId: {
     '0' : -1,

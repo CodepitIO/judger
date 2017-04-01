@@ -8,9 +8,6 @@ module.exports = {
     'java'      : '36',
     'python2.7' : '7',
     'python3'   : '31',
-    // 'pascal'  : '4',
-    // 'haskell'  : '12',
-    // 'go'    : '32',
   },
   verdictId: {
     'IN_QUEUE': -1,

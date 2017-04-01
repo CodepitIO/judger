@@ -148,14 +148,8 @@ module.exports = (function(parentCls) {
         try {
           html = html.replace(/(<)([^a-zA-Z\s\/\\!])/g, '&lt;$2');
           let $ = cheerio.load(html);
-          Util.adjustImgSrcs($, TYPE);
-          $('a').each((i, elem) => {
-            elem = $(elem);
-            let href = elem.attr('href')
-            if (href && href[0] === '/') {
-              elem.attr('href', '//' + HOST + href)
-            }
-          });
+          Util.adjustImgSrcs($, url);
+          Util.adjustAnchors($, HOST);
           let content = $('div.problemindexholder');
 
           let inp = content.find('.input-file');

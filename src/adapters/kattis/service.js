@@ -174,7 +174,7 @@ module.exports = ((parentCls) => {
         try {
           html = html.replace(/(<)([^a-zA-Z\s\/\\!])/g, '&lt;$2');
           let $ = cheerio.load(html);
-          Util.adjustImgSrcs($, TYPE);
+          Util.adjustImgSrcs($, url);
           $('a').each((i, elem) => {
             elem = $(elem);
             let href = elem.attr('href')

@@ -159,7 +159,7 @@ module.exports = (function(parentCls) {
         try {
           html = html.replace(/(<)([^a-zA-Z\s\/\\!])/g, '&lt;$2');
           let $ = cheerio.load(html);
-          Util.adjustImgSrcs($, TYPE);
+          Util.adjustImgSrcs($, url);
           $('h3').replaceWith(function () {
             return "<div class='section-title'>" + $(this).html() + "</div>";
           });
