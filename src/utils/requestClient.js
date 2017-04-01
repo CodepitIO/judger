@@ -1,9 +1,13 @@
-const extend  = require('extend'),
-      request = require('request');
+'use strict';
 
-function RequestClient(protocol, host){
-    this.protocol = protocol;
-    this.host = host;
+const extend  = require('extend'),
+      request = require('request'),
+      _       = require('lodash');
+
+function RequestClient(url) {
+    let params = _.split(url, '://');
+    this.protocol = params[0];
+    this.host = params[1];
     this.jar = request.jar();
 }
 

@@ -14,15 +14,15 @@ const Adapter       = require('../adapter'),
       RequestClient = require('../../utils/requestClient'),
       Util          = require('../../utils/util');
 
-const HOST              = "codeforces.com",
-      LOGIN_PAGE_PATH   = "/enter",
+const LOGIN_PAGE_PATH   = "/enter",
       SUBMIT_PAGE_PATH  = "/problemset/submit",
       STATUS_PATH       = "/problemset/status",
       SUBMISSIONS_PATH  = "/problemset/status?friends=on",
       SUBMISSIONS_API   = "/api/user.status?handle=%s&count=%s";
 
 const LOGIN_TEST_REGEX      = /logout/i,
-      LLD_REGEX             = /preferred\s+to\s+use\s+cin/i;
+      LLD_REGEX             = /preferred\s+to\s+use\s+cin/i,
+      LIMITED_LANG_PATTERN  = "following languages are only available languages";
 
 const TYPE = path.basename(__dirname);
 
@@ -32,12 +32,12 @@ module.exports = (function(parentCls) {
     parentCls.call(this, acct);
 
     let browser = new Browser({runScripts: false, strictSSL: false});
-    let client = new RequestClient('http', HOST);
+    let client = new RequestClient(Config.url);
 
     function login(callback) {
       async.waterfall([
         (next) => {
-          browser.visit("http://" + HOST + LOGIN_PAGE_PATH, next)
+          browser.visit(Config.url + LOGIN_PAGE_PATH, next)
         },
         (next) => {
           browser
@@ -74,7 +74,7 @@ module.exports = (function(parentCls) {
     function send(submission, retry, callback) {
       async.waterfall([
         (next) => {
-          browser.visit("http://" + HOST + SUBMIT_PAGE_PATH, next);
+          browser.visit(Config.url + SUBMIT_PAGE_PATH, next);
         },
         (next) => {
           if (browser.location.pathname === LOGIN_PAGE_PATH) {
@@ -136,20 +136,25 @@ module.exports = (function(parentCls) {
   (function(obj) {
     const PROBLEMSET_API = "/api/problemset.problems";
 
-    const client = new RequestClient('http', HOST);
+    const client = new RequestClient(Config.url);
 
     const TIMELIMIT_PATTERN = /([\d.,]+)?\s*seconds?/i;
 
     obj.import = (problem, callback) => {
-      let url = Config.getProblemPath(problem.id);
-      client.get(url, (err, res, html) => {
+      let urlPath = Config.getProblemPath(problem.id);
+      client.get(urlPath, (err, res, html) => {
         if (err) return callback(err);
         let data = {};
         try {
           html = html.replace(/(<)([^a-zA-Z\s\/\\!])/g, '&lt;$2');
+          if (html.indexOf(LIMITED_LANG_PATTERN) > -1) {
+            console.log('>>>>>>>>>>>>>>>>>>>>>>>>>>', problem.id);
+            throw new Error(`Problem ${problem.id} doesn't support any language`);
+          }
+          data.supportedLangs = Config.getSupportedLangs();
           let $ = cheerio.load(html);
-          Util.adjustImgSrcs($, url);
-          Util.adjustAnchors($, HOST);
+          Util.adjustImgSrcs($, Config.url);
+          Util.adjustAnchors($, Config.url);
           let content = $('div.problemindexholder');
 
           let inp = content.find('.input-file');

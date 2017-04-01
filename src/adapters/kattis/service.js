@@ -14,8 +14,7 @@ const Adapter       = require('../adapter'),
       RequestClient = require('../../utils/requestClient'),
       Util          = require('../../utils/util');
 
-const HOST              = "open.kattis.com",
-      LOGIN_PATH        = "/login/email?",
+const LOGIN_PATH        = "/login/email?",
       SUBMIT_PATH       = "/submit",
       SUBMISSIONS_PATH  = "/users/%s";
 
@@ -33,7 +32,7 @@ module.exports = ((parentCls) => {
   function AdapterKATTIS(acct) {
     parentCls.call(this, acct);
 
-    const client = new RequestClient('https', HOST);
+    const client = new RequestClient(Config.url);
 
     function login(callback) {
       async.waterfall([
@@ -48,7 +47,7 @@ module.exports = ((parentCls) => {
             f.data[f.passField] = acct.getPass();
             opts = {
               followAllRedirects: true,
-              headers: { Referer: 'https://' + HOST, },
+              headers: { Referer: Config.url, },
             };
           } catch (e) {
             return next(Errors.SubmissionFail, res, html);
@@ -96,7 +95,7 @@ module.exports = ((parentCls) => {
             }
             opts = {
               followAllRedirects: true,
-              headers: { Referer: 'https://' + HOST, },
+              headers: { Referer: Config.url, },
             };
           } catch (e) {
             return next(Errors.SubmissionFail, res, html);
@@ -164,24 +163,19 @@ module.exports = ((parentCls) => {
     const AUTHOR_PATTERN    = /Author.+:\s+(.*)\s+/i;
     const SOURCE_PATTERN    = /Source:\s+(.*)\s+/i;
 
-    const client = new RequestClient('https', HOST);
+    const client = new RequestClient(Config.url);
 
     obj.import = (problem, callback) => {
-      let url = Config.getProblemPath(problem.id);
-      client.get(url, (err, res, html) => {
+      let urlPath = Config.getProblemPath(problem.id);
+      client.get(urlPath, (err, res, html) => {
         if (err) return callback(err);
         let data = {};
         try {
+          data.supportedLangs = Config.getSupportedLangs();
           html = html.replace(/(<)([^a-zA-Z\s\/\\!])/g, '&lt;$2');
           let $ = cheerio.load(html);
-          Util.adjustImgSrcs($, url);
-          $('a').each((i, elem) => {
-            elem = $(elem);
-            let href = elem.attr('href')
-            if (href && href[0] === '/') {
-              elem.attr('href', '//' + HOST + href)
-            }
-          });
+          Util.adjustImgSrcs($, Config.url);
+          Util.adjustAnchors($, Config.url);
           let header = $('.problem-sidebar');
           let match;
           if (match = header.text().match(TIMELIMIT_PATTERN)) {

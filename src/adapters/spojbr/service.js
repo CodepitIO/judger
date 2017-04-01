@@ -18,8 +18,7 @@ const Adapter       = require('../adapter'),
 const LOGIN_PATH  = path.join(__dirname, "login.html"),
       SUBMIT_PATH = path.join(__dirname, "submit.html");
 
-const HOST        = "br.spoj.com",
-      STATUS_PATH = "/status";
+const STATUS_PATH = "/status";
 
 const LOGIN_TEST_ANTI_REGEX     = /sign\s+up/i,
       AUTH_REQUIRED_TEST_REGEX  = /authori[sz]ation\s+required/i,
@@ -33,7 +32,7 @@ module.exports = (function(parentCls) {
     parentCls.call(this, acct);
 
     const browser = new Browser({runScripts: false, strictSSL: false});
-    const client = new RequestClient('http', HOST);
+    const client = new RequestClient(Config.url);
 
     function login(callback) {
       async.waterfall([
@@ -141,7 +140,7 @@ module.exports = (function(parentCls) {
     const tmplPath = './src/adapters/spojbr/problem_template.html';
     const tmpl = _.template(fs.readFileSync(tmplPath, 'utf8'));
 
-    const client = new RequestClient('http', HOST);
+    const client = new RequestClient(Config.url);
 
     function getMetadata(elem) {
       try {
@@ -152,24 +151,24 @@ module.exports = (function(parentCls) {
     }
 
     obj.import = (problem, callback) => {
-      let url = Config.getProblemPath(problem.id);
-      client.get(url, (err, res, html) => {
+      let urlPath = Config.getProblemPath(problem.id);
+      client.get(urlPath, (err, res, html) => {
         if (err) return callback(err);
         let data = {};
         try {
           html = html.replace(/(<)([^a-zA-Z\s\/\\!])/g, '&lt;$2');
           let $ = cheerio.load(html);
-          Util.adjustImgSrcs($, url);
+          let langs = $('.probleminfo td:contains("Linguagem")').next().text();
+          let supportedLangs = Config.getSupportedLangs(langs);
+          if (supportedLangs.length === 0) {
+            throw new Error(`Problem ${problem.id} doesn't support any language`);
+          }
+          data.supportedLangs = supportedLangs;
           $('h3').replaceWith(function () {
             return "<div class='section-title'>" + $(this).html() + "</div>";
           });
-          $('a').each((i, elem) => {
-            elem = $(elem);
-            let href = elem.attr('href')
-            if (href && href[0] === '/') {
-              elem.attr('href', '//' + HOST + href)
-            }
-          });
+          Util.adjustImgSrcs($, Config.url, urlPath);
+          Util.adjustAnchors($, Config.url);
           let header = $('.probleminfo').children(), match;
           let tl = getMetadata(header.eq(2));
           if (tl && (match = tl.match(TIMELIMIT_PATTERN))) {

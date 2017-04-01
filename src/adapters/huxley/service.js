@@ -12,8 +12,7 @@ const Adapter       = require('../adapter'),
       Defaults      = require('../../config/defaults'),
       Config        = require('./config')
 
-const HOST              = 'www.thehuxley.com',
-      AUTH_PATH         = '/api/login',
+const AUTH_PATH         = '/api/login',
       SUBMIT_PATH       = '/api/v1/user/problems/%s/submissions',
       SUBMISSIONS_PATH  = '/api/v1/submissions?max=20';
 
@@ -30,7 +29,7 @@ module.exports = (function(parentCls){
       fs.mkdirSync('/tmp')
     }
 
-    const client = new RequestClient('https', HOST);
+    const client = new RequestClient(Config.url);
 
     let accessToken = null;
 
@@ -145,7 +144,7 @@ module.exports = (function(parentCls){
   // Problems Fetcher
   (function(obj) {
     const PROBLEMS_PATH_UNF = "/api/v1/problems?max=%s&offset=%s";
-    const client = new RequestClient('https', HOST);
+    const client = new RequestClient(Config.url);
     const maxPerPage = 100;
 
     const PROBLEM_PATH_UNF = "/api/v1/problems/%s";
@@ -180,6 +179,7 @@ module.exports = (function(parentCls){
             obj.output = obj.output.replace(/\r?\n/g, '<br>');
             return obj;
           });
+          data.supportedLangs = Config.getSupportedLangs();
           data.timelimit = meta.timeLimit;
           if (meta.source) data.source = 'Fonte: ' + meta.source;
 

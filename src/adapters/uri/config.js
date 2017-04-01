@@ -1,3 +1,5 @@
+const SUPPORTED_LANGS = ['c', 'cpp', 'cpp11', 'java', 'python2.7', 'python3'];
+
 module.exports = {
   name: 'URI',
   submitLang: {
@@ -25,6 +27,7 @@ module.exports = {
   getProblemPath: (id) => {
     return '/repository/UOJ_' + id + '.html';
   },
+  getSupportedLangs: () => SUPPORTED_LANGS,
   intervalPerAdapter: 6000,
   submissionTTL: 60 * 60 * 1000,
 }

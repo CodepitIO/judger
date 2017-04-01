@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const errors = require('./errors');
+const _ = require('lodash');
 
 const LANG_C      = 1;
 const LANG_JAVA   = 2;
@@ -59,14 +60,17 @@ obj.getLangName = function(lang){
     return '?';
 };
 
-obj.adjustImgSrcs = function($, url) {
+obj.adjustImgSrcs = function($, url, urlPath) {
   $('img').each((i, elem) => {
     elem = $(elem);
     let link = elem.attr('src');
     if (!link) return;
-    if (link[0] === '/' || link[0] === '.') {
+    if (_.startsWith(link, '.')) {
+      console.log(link);
+      elem.attr('src', url + (urlPath || '') + '/' + link);
+    } else if (link[0] === '/' || link.indexOf('/') === -1) {
       let imgSrc = url;
-      if (link[0] === '.') imgSrc += '/';
+      if (link[0] !== '/') imgSrc += '/';
       imgSrc += link;
       elem.attr('src', imgSrc);
     }
@@ -76,12 +80,16 @@ obj.adjustImgSrcs = function($, url) {
   });
 }
 
-obj.adjustAnchors = function($, host) {
+obj.adjustAnchors = function($, url) {
   $('a').each((i, elem) => {
     elem = $(elem);
-    let href = elem.attr('href')
-    if (href && href[0] === '/') {
-      elem.attr('href', '//' + host + href)
+    let link = elem.attr('href')
+    if (!link) return;
+    if (link[0] === '/' || link[0] === '.') {
+      let href = url;
+      if (link[0] === '.') href += '/';
+      href += link;
+      elem.attr('href', href);
     }
   });
 }

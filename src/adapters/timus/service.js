@@ -12,8 +12,7 @@ const Adapter       = require('../adapter'),
       RequestClient = require('../../utils/requestClient'),
       Util          = require('../../utils/util');
 
-const HOST             = "acm.timus.ru",
-      SUBMIT_PAGE_PATH = "/submit.aspx",
+const SUBMIT_PAGE_PATH = "/submit.aspx",
       SUBMIT_PATH      = "/submit.aspx?space=1",
       AUTHOR_UNF_PATH  = "/status.aspx?space=1&count=50&author=%s";
 
@@ -29,7 +28,7 @@ module.exports = (function(parentCls){
   function AdapterTIMUS(acct) {
     parentCls.call(this, acct);
 
-    const client = new RequestClient('http', HOST);
+    const client = new RequestClient(Config.url);
 
     const AUTHOR_PATH = util.format(AUTHOR_UNF_PATH, acct.getUser());
 
@@ -69,7 +68,7 @@ module.exports = (function(parentCls){
       let opts = {
         followAllRedirects: false,
         headers: {
-          Referer: 'http://' + HOST + SUBMIT_PAGE_PATH,
+          Referer: Config.url + SUBMIT_PAGE_PATH,
         },
       };
       client.postMultipart(SUBMIT_PATH, data, opts, (err, res, html) => {
@@ -118,27 +117,22 @@ module.exports = (function(parentCls){
   (function(obj) {
     const PROBLEMS_PATH = "/problemset.aspx?space=1&page=all";
 
-    const client = new RequestClient('http', HOST);
+    const client = new RequestClient(Config.url);
 
     const TIMELIMIT_PATTERN = /time\s*limit:\s*([\d.,]+)\s*\w/i;
     const MEMOLIMIT_PATTERN = /memory\s*limit:\s*([\d\w\s]+)/i;
 
     obj.import = (problem, callback) => {
-      let url = Config.getProblemPath(problem.id);
-      client.get(url, (err, res, html) => {
+      let urlPath = Config.getProblemPath(problem.id);
+      client.get(urlPath, (err, res, html) => {
         if (err) return callback(err);
         let data = {};
         try {
+          data.supportedLangs = Config.getSupportedLangs();
           html = html.replace(/(<)([^a-zA-Z\s\/\\!])/g, '&lt;$2');
           let $ = cheerio.load(html);
-          Util.adjustImgSrcs($, url);
-          $('a').each((i, elem) => {
-            elem = $(elem);
-            let href = elem.attr('href')
-            if (href && href[0] === '/') {
-              elem.attr('href', '//' + HOST + href)
-            }
-          });
+          Util.adjustImgSrcs($, Config.url);
+          Util.adjustAnchors($, Config.url);
           let header = $('.problem_limits');
           let match;
           if (match = header.html().match(TIMELIMIT_PATTERN)) {

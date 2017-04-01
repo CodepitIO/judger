@@ -15,8 +15,7 @@ const Adapter       = require('../adapter'),
       Defaults      = require('../../config/defaults'),
       Config        = require('./config')
 
-const HOST              = "www.codechef.com",
-      SUBMIT_PATH       = "/submit/%s",
+const SUBMIT_PATH       = "/submit/%s",
       SESSION_LIMIT     = "/session/limit",
       SUBMISSIONS_PATH  = "/submissions?handle=%s&language=%s";
 
@@ -38,7 +37,7 @@ module.exports = ((parentCls) => {
       fs.mkdirSync('/tmp')
     }
 
-    const client = new RequestClient('https', HOST);
+    const client = new RequestClient(Config.url);
 
     function login(callback) {
       async.waterfall([
@@ -53,7 +52,7 @@ module.exports = ((parentCls) => {
             f.data['pass'] = acct.getPass();
             opts = {
               followAllRedirects: true,
-              headers: { Referer: 'https://' + HOST, },
+              headers: { Referer: Config.url, },
             };
           } catch (e) {
             return next(Errors.SubmissionFail, res, html);
@@ -81,7 +80,7 @@ module.exports = ((parentCls) => {
         if (!f) return callback(Errors.LoginFail)
         let opts = {
           followAllRedirects: true,
-          headers: { Referer: 'https://' + HOST, },
+          headers: { Referer: Config.url, },
         };
         f.data.sid = sid;
         client.post(SESSION_LIMIT, f.data, opts, (err, res, _html) => {
@@ -122,7 +121,7 @@ module.exports = ((parentCls) => {
             f = Util.parseForm(SUBMIT_FORM_PATTERN, html);
             opts = {
               followAllRedirects: true,
-              headers: { Referer: 'https://' + HOST },
+              headers: { Referer: Config.url, },
             };
             f.data.program = '';
             f.data.language = submission.language;
@@ -162,7 +161,6 @@ module.exports = ((parentCls) => {
           acct.getUser(),
           1000000000 + Math.floor(Math.random()*1000000000));
       client.get(userSubmissionsPath, (err, res, html) => {
-        fs.writeFileSync('lol.html', html, 'utf8');
         html = html || '';
         let $ = cheerio.load(html);
         for (let id in judgeSet) {
@@ -195,11 +193,11 @@ module.exports = ((parentCls) => {
 
     const PROBLEMS_PATH_UNF = "/api/contests/PRACTICE/problems/%s"
 
-    const client = new RequestClient('https', HOST);
+    const client = new RequestClient(Config.url);
 
     obj.import = (problem, callback) => {
-      let url = util.format(PROBLEMS_PATH_UNF, problem.id);
-      client.get(url, {json: true}, (err, res, meta) => {
+      let urlPath = util.format(PROBLEMS_PATH_UNF, problem.id);
+      client.get(urlPath, {json: true}, (err, res, meta) => {
         if (err) return callback(err);
         let data = {};
         try {
@@ -213,8 +211,8 @@ module.exports = ((parentCls) => {
           data.supportedLangs = supportedLangs;
           let html = meta.body.replace(/(<)([^a-zA-Z\s\/\\!])/g, '&lt;$2');
           let $ = cheerio.load(html);
-          Util.adjustImgSrcs($, url);
-          Util.adjustAnchors($, HOST);
+          Util.adjustImgSrcs($, Config.url);
+          Util.adjustAnchors($, Config.url);
           $('.solution-visible-txt').remove();
           while (true) {
             let firstElem = $('*').first();

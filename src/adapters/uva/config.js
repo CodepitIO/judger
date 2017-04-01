@@ -1,3 +1,5 @@
+const SUPPORTED_LANGS = ['c', 'cpp', 'cpp11', 'java', 'python3'];
+
 module.exports = {
   name: 'UVa',
   submitLang: {
@@ -32,6 +34,7 @@ module.exports = {
   getProblemPath: (id) => {
     return '/external/' + Math.floor(id/100) + '/' + id + '.html';
   },
+  getSupportedLangs: () => SUPPORTED_LANGS,
   getProblemPdfPath: (id) => {
     return '/external/' + Math.floor(id/100) + '/p' + id + '.pdf';
   },
