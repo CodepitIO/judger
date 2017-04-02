@@ -1,13 +1,9 @@
-'use strict';
-
 const extend  = require('extend'),
-      request = require('request'),
-      _       = require('lodash');
+      request = require('request');
 
-function RequestClient(url) {
-    let params = _.split(url, '://');
-    this.protocol = params[0];
-    this.host = params[1];
+function RequestClient(protocol, host){
+    this.protocol = protocol;
+    this.host = host;
     this.jar = request.jar();
 }
 
@@ -19,9 +15,9 @@ RequestClient.prototype.request = function(opts, callback){
         headers: {
             'Accept-Charset': 'utf-8,ISO-8859-1',
             'Accept-Language': 'en-US,en;q=0.8',
-            'User-Agent' :  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_0) "+
-                            "AppleWebKit/537.36 (KHTML, like Gecko) "+
-                            "Chrome/51.0.2704.103 Safari/537.36",
+            'User-Agent' :  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_2) "+
+                            "AppleWebKit/537.17 (KHTML, like Gecko) "+
+                            "Chrome/24.0.1312.57 Safari/537.17",
             "Accept" : "text/html, application/xml, text/xml, */*",
         },
     }, opts);
