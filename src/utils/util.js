@@ -66,7 +66,6 @@ obj.adjustImgSrcs = function($, url, urlPath) {
     let link = elem.attr('src');
     if (!link) return;
     if (_.startsWith(link, '.')) {
-      console.log(link);
       elem.attr('src', url + (urlPath || '') + '/' + link);
     } else if (link[0] === '/' || link.indexOf('/') === -1) {
       let imgSrc = url;

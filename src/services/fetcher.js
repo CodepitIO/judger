@@ -24,7 +24,7 @@ module.exports = (() => {
 
   function importSaveFail(problem, callback) {
     if (!problem.imported) problem.importTries++
-    console.log(`<<<<<<< Error! ${problem.id} from ${problem.oj}.`)
+    //console.log(`<<<<<<< Error! ${problem.id} from ${problem.oj}.`)
     return problem.save(() => {
       return callback && callback(Errors.ImportFailed);
     });
@@ -55,7 +55,7 @@ module.exports = (() => {
         }
         return uploadToS3Queue.push(problem, (err, details) => {
           if (err) {
-            console.log('>> ', err)
+            //console.log('>> ', err)
             return importSaveFail(problem, callback)
           }
           count++
@@ -67,17 +67,27 @@ module.exports = (() => {
           return problem.save(callback)
         })
       } else {
-        console.log('> ', err)
+        //console.log('> ', err)
         return importSaveFail(problem, callback)
       }
     });
   }
 
   function shouldImport(problem) {
+    let daysSinceCreation = Math.round(
+      (new Date() - (problem.createdAt || 0)) / (24 * 60 * 60 * 1000));
+    // Let's not import old problems, as we already tried many times.
+    // Problems created more than 3 months ago are considered old.
+    if (daysSinceCreation > 90) {
+      return false;
+    }
     let daysSinceImport = Math.round(
       (new Date() - (problem.importDate || 0)) / (24 * 60 * 60 * 1000));
-    return (problem.imported && daysSinceImport > 90) ||
-           (!problem.imported && problem.importTries < 10);
+    // Let's try to import the problem again after 7 days, because it might've
+    // been updated. This will stop after 3 months.
+    if (daysSinceImport > 7) {
+      return true;
+    }
   }
 
   function importProblemSet(problems, callback) {
@@ -156,7 +166,7 @@ module.exports = (() => {
       cronTime: FETCH_PROBLEMS_CRON,
       onTick: runProblemFetchers,
       timeZone: FETCH_PROBLEMS_TZ,
-      runOnInit: false,
+      runOnInit: true,
     });
     job.start();
     return callback && callback();

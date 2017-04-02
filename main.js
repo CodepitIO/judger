@@ -21,12 +21,4 @@ function start() {
   });
 }
 
-// start();
-
-let CC = require('./src/adapters/codechef/service');
-let c = new CC({
-  getUser: () => 'godely',
-  getPass: () => '920721',
-  getType: () => 'codechef',
-});
-c._login(() => {});
+start();
