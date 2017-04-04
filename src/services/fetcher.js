@@ -177,17 +177,16 @@ module.exports = (() => {
   }
 
   function shouldImport(problem) {
-    let daysSinceCreation = Math.round(
-      (new Date() - (problem.createdAt || 0)) / (24 * 60 * 60 * 1000));
-    // Let's not import old problems, as we already did it many times.
-    // Problems created more than 3 months ago are considered old.
-    if (daysSinceCreation > 90) {
-      return false;
-    }
-    // For the first 10 days we'll always retry problems that failed to be
-    // imported.
+    // For each problem not imported, we'll try to import it 10 times
     if (!problem.imported && problem.importTries < 10) {
       return true;
+    }
+    // Let's not import old problems, as we already did it many times.
+    // Problems created more than 3 months ago are considered old.
+    let daysSinceCreation = Math.round(
+      (new Date() - (problem.createdAt || 0)) / (24 * 60 * 60 * 1000));
+    if (daysSinceCreation > 90) {
+      return false;
     }
     // Then, we'll retry to import every 7 days, even for already imported problems
     let daysSinceUpdate = Math.round(
