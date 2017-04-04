@@ -131,7 +131,7 @@ module.exports = ((parentCls) => {
             '</script>';
           let source = $('b:contains("Source")');
           if (source) {
-            data.source = source.next().text();
+            data.source = 'Source: ' + source.next().text();
           }
           data.timelimit = parseFloat(html.match(TIMELIMIT_PATTERN)[1])
           data.memorylimit = Math.round(parseFloat(html.match(

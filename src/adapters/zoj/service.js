@@ -119,8 +119,14 @@ module.exports = ((parentCls) => {
           let $ = cheerio.load(html);
           Util.adjustAnchors($, Config.url + urlPath);
           let body = $('#content_body');
+          $('b').replaceWith(function () {
+            if (/(input|output|hint|task|introduction)/i.exec($(this).text()) &&
+                  $(this).text().length < 25) {
+              return "<div class='section-title'>" + $(this).html() + "</div>";
+            }
+            return $(this).html();
+          });
           body.children().slice(0,4).remove();
-          body.children().slice(-2).remove();
           html = body.html();
           let author = /\s*Author[^<]*<strong>([^<]*)<\/strong>/.exec(html);
           author = author && author[1];

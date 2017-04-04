@@ -163,7 +163,7 @@ module.exports = ((parentCls) => {
           let body = '<div class="poj-problem problem-statement ttypography">';
           let parent = $('p.pst').parent();
           if (parent.children().slice(-2).html() === 'Source') {
-            data.source = parent.children().slice(-1).text();
+            data.source = 'Source: ' + parent.children().slice(-1).text();
           }
           parent.children().slice(0,4).remove();
           if (data.source) {
