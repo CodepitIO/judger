@@ -93,11 +93,20 @@ module.exports = (() => {
         if (err || res.headers['content-length'] < 200 || res.headers['content-type'] !== 'application/pdf') {
           return callback(err || new Error())
         }
-        S3.upload({Key: `assets/problems/${problem.oj}/${problem.id}.pdf`, Body: body, ACL: 'public-read', CacheControl: 'max-age=31536000'}, callback)
+        S3.upload({
+          Key: `assets/problems/${problem.oj}/${problem.id}.pdf`,
+          Body: body,
+          ACL: 'public-read',
+          CacheControl: 'max-age=31536000',
+        }, callback)
       })
     } else {
-      let obj = {Key: `assets/problems/${problem.oj}/${problem.id}.html`, Body: problem.html, ACL: 'public-read', CacheControl: 'max-age=1209600'}
-      return S3.upload(obj, callback)
+      return S3.upload({
+        Key: `assets/problems/${problem.oj}/${problem.id}.html`,
+        Body: problem.html,
+        ACL: 'public-read',
+        CacheControl: 'max-age=1209600',
+      }, callback)
     }
   }, S3_QUEUE_CONCURRENCY)
 
