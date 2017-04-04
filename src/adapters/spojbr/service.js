@@ -167,8 +167,7 @@ module.exports = (function(parentCls) {
           $('h3').replaceWith(function () {
             return "<div class='section-title'>" + $(this).html() + "</div>";
           });
-          Util.adjustImgSrcs($, Config.url, urlPath);
-          Util.adjustAnchors($, Config.url);
+          Util.adjustAnchors($, Config.url + urlPath);
           let header = $('.probleminfo').children(), match;
           let tl = getMetadata(header.eq(2));
           if (tl && (match = tl.match(TIMELIMIT_PATTERN))) {
@@ -193,6 +192,7 @@ module.exports = (function(parentCls) {
             data = data.replace(/<strong>\s*<br>/, '<strong>');
             item.html(data);
           });
+          assert(description.html().length > 0);
           data.html = tmpl({description: description.html()})
         } catch (err) {
           return callback(err);

@@ -22,6 +22,7 @@
     "kue": "^0.11.1",
     "lodash": "^4.13.1",
     "mongoose": "^4.5.4",
+    "node-mime": "^1.0.0",
     "redis": "^2.6.2",
     "request": "^2.73.0",
     "socket.io-emitter": "^1.0.0",

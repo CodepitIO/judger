@@ -174,8 +174,7 @@ module.exports = ((parentCls) => {
           data.supportedLangs = Config.getSupportedLangs();
           html = html.replace(/(<)([^a-zA-Z\s\/\\!])/g, '&lt;$2');
           let $ = cheerio.load(html);
-          Util.adjustImgSrcs($, Config.url);
-          Util.adjustAnchors($, Config.url);
+          Util.adjustAnchors($, Config.url + urlPath);
           let header = $('.problem-sidebar');
           let match;
           if (match = header.text().match(TIMELIMIT_PATTERN)) {
@@ -192,6 +191,7 @@ module.exports = ((parentCls) => {
             src2 = _.trim(match[1]);
           }
           data.source = (src1 && src2) ? `${src1} (${src2})` : src1 || src2;
+          assert($('.problembody').html().length > 0);
           data.html =
             '<div id="kattis" class="kattis-problem">' +
               $('.problembody').html() +

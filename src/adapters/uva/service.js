@@ -140,7 +140,7 @@ module.exports = ((parentCls) => {
 
     const PROBLEM_METADATA_API = "http://uhunt.felix-halim.net/api/p/num/%s";
 
-    function getContent(data, html, id) {
+    function getContent(urlPath, data, html, id) {
       if (!_.includes(html, '<body>')) {
         html = `<body>${html}</body>`
       }
@@ -148,8 +148,7 @@ module.exports = ((parentCls) => {
       let $ = cheerio.load(html);
       let body = $('body')
       let vol = parseInt(id / 100);
-      Util.adjustImgSrcs($, `${Config.url}/external/${vol}/`);
-      Util.adjustAnchors($, `${Config.url}/external/${vol}/`);
+      Util.adjustAnchors($, Config.url + urlPath);
       body.find('table[bgcolor="#0060F0"]').first().remove();
       body.find('h1').first().remove();
       body.find('h2').each((i, item) => {
@@ -167,6 +166,7 @@ module.exports = ((parentCls) => {
         adr.prev().remove();
         adr.remove();
       }
+      assert(body.html().length > 0);
       data.html = '<div class="problem-statement">' + body.html() + '</div>';
     }
 
@@ -189,7 +189,7 @@ module.exports = ((parentCls) => {
           data.timelimit = tl / 1000.0;
           let html = iconv.decode(results.body[1], 'ISO-8859-1')
           data.isPdf = (_.includes(html, "HTTP-EQUIV") && html.length <= 200)
-          if (!data.isPdf) getContent(data, html, problem.id)
+          if (!data.isPdf) getContent(problemUrl, data, html, problem.id)
         } catch (err) {
           return callback(err);
         }

@@ -148,13 +148,11 @@ module.exports = (function(parentCls) {
         try {
           html = html.replace(/(<)([^a-zA-Z\s\/\\!])/g, '&lt;$2');
           if (html.indexOf(LIMITED_LANG_PATTERN) > -1) {
-            console.log('>>>>>>>>>>>>>>>>>>>>>>>>>>', problem.id);
             throw new Error(`Problem ${problem.id} doesn't support any language`);
           }
           data.supportedLangs = Config.getSupportedLangs();
           let $ = cheerio.load(html);
-          Util.adjustImgSrcs($, Config.url);
-          Util.adjustAnchors($, Config.url);
+          Util.adjustAnchors($, Config.url + urlPath);
           let content = $('div.problemindexholder');
 
           let inp = content.find('.input-file');
@@ -183,6 +181,7 @@ module.exports = (function(parentCls) {
           content.removeAttr('problemindex');
           content.find('.header').remove();
           data.html = content.html();
+          assert(data.html.length > 0);
         } catch (err) {
           return callback(err);
         }

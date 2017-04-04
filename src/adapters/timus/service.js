@@ -131,8 +131,7 @@ module.exports = (function(parentCls){
           data.supportedLangs = Config.getSupportedLangs();
           html = html.replace(/(<)([^a-zA-Z\s\/\\!])/g, '&lt;$2');
           let $ = cheerio.load(html);
-          Util.adjustImgSrcs($, Config.url);
-          Util.adjustAnchors($, Config.url);
+          Util.adjustAnchors($, Config.url + urlPath);
           let header = $('.problem_limits');
           let match;
           if (match = header.html().match(TIMELIMIT_PATTERN)) {
@@ -145,6 +144,7 @@ module.exports = (function(parentCls){
           source.find('b').remove();
           if (source && source.text()) data.source = source.text();
           source.remove();
+          assert($('#problem_text').html().length > 0);
           data.html = '<div class="timus-problem">' + $('#problem_text').html() + '</div>';
         } catch (err) {
           return callback(err);

@@ -2,6 +2,7 @@
 
 const path    = require('path'),
       async   = require('async'),
+      assert  = require('assert'),
       Browser = require('zombie'),
       util    = require('util'),
       cheerio = require('cheerio'),
@@ -134,14 +135,13 @@ module.exports = (function(parentCls) {
           data.supportedLangs = Config.getSupportedLangs();
           html = html.replace(/(<)([^a-zA-Z\s\/\\!])/g, '&lt;$2');
           let $ = cheerio.load(html);
-          Util.adjustImgSrcs($, Config.url);
-          Util.adjustAnchors($, Config.url);
           $('script').remove();
           data.source = $('div.header p').html();
           let tl = $.html().match(TIMELIMIT_PATTERN);
           if (tl) data.timelimit = parseFloat(tl[1]);
           //data.memorylimit = '512 MB';
           $('div.header').remove();
+          assert($('body').html().length > 0);
           data.html = '<div class="problem-statement">' + $('body').html(); + '</div>';
         } catch (err) {
           return callback(err);

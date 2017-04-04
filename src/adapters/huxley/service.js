@@ -2,6 +2,7 @@
 
 const fs        = require('fs'),
       async     = require('async'),
+      assert    = require('assert'),
       path      = require('path'),
       util      = require('util'),
       _         = require('lodash')
@@ -168,6 +169,7 @@ module.exports = (function(parentCls){
         let data = {};
         try {
           let meta = results.meta[1];
+          assert(meta.description.length > 0);
           let tests = results.tests[1];
           if (meta.status === '404') {
             return callback(Errors.ResourceNotFound);

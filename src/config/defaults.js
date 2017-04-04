@@ -1,6 +1,9 @@
 'use strict';
 
 module.exports = {
+  STATIC_ASSETS_DOMAIN: (process.env.NODE_ENV !== 'development') ?
+    'https://cdn.codepit.io' : 'https://cdn-dev.codepit.io',
+
   submissionStatus: {
     'COMPILING': -4,
   	'RUNNING': -3,

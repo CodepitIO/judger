@@ -26,7 +26,7 @@ const TYPE = path.basename(__dirname);
 
 module.exports = ((parentCls) => {
 
-  function AdapterPKU(acct) {
+  function AdapterPOJ(acct) {
     parentCls.call(this, acct);
 
     let client = new RequestClient(Config.url);
@@ -112,19 +112,15 @@ module.exports = ((parentCls) => {
     }
 
     function judge(judgeSet, callback) {
-      client.get(util.format(SUBMISSIONS_PATH, acct.getUser()), (err, res, html) => {
+      let submissionsPath = util.format(SUBMISSIONS_PATH, acct.getUser());
+      client.get(submissionsPath, (err, res, html) => {
         html = html || '';
         let $ = cheerio.load(html);
         for (let id in judgeSet) {
           let data = null;
           try {
             data = $('td:contains("' + id + '")');
-            data = data.nextAll().eq(4);
-            if (!data.find('a').html()) {
-              data = data.html();
-            } else {
-              data = data.find('a').html();
-            }
+            data = _.trim(data.nextAll().eq(2).text());
             judgeSet[id].verdict = data;
           } catch(e) {}
         }
@@ -144,17 +140,18 @@ module.exports = ((parentCls) => {
     const TIMELIMIT_PATTERN = /time\s*limit:\s*([\d.,]+)\s*\w/i;
     const MEMOLIMIT_PATTERN = /memory\s*limit:\s*([\d\w\s]+)/i;
 
+    let dynamicWait = 0;
+
     obj.import = (problem, callback) => {
       let urlPath = Config.getProblemPath(problem.id);
       client.get(urlPath, (err, res, html) => {
-        if (err) return callback(err);
         let data = {};
         try {
+          if (err) throw err;
           data.supportedLangs = Config.getSupportedLangs();
           html = html.replace(/(<)([^a-zA-Z\s\/\\!])/g, '&lt;$2');
           let $ = cheerio.load(html);
-          Util.adjustImgSrcs($, Config.url);
-          Util.adjustAnchors($, Config.url);
+          Util.adjustAnchors($, Config.url + urlPath);
           let header = $('.plm');
           let match;
           if (match = header.text().match(TIMELIMIT_PATTERN)) {
@@ -163,7 +160,7 @@ module.exports = ((parentCls) => {
           if (match = header.text().match(MEMOLIMIT_PATTERN)) {
             data.memorylimit = Math.round(parseFloat(match[1]) / 1024.) + ' MB';
           }
-          let body = '<div class="pku-problem">';
+          let body = '<div class="poj-problem problem-statement ttypography">';
           let parent = $('p.pst').parent();
           if (parent.children().slice(-2).html() === 'Source') {
             data.source = parent.children().slice(-1).text();
@@ -172,12 +169,20 @@ module.exports = ((parentCls) => {
           if (data.source) {
             parent.children().slice(-2).remove();
           }
+          assert(parent.html().length > 0);
           body += parent.html();
-          body += '</div>';
+          body += '</div>' +
+           '<script>' +
+             '$(function() { MathJax.Hub.Typeset("poj"); });' +
+           '</script>';
           data.html = body;
         } catch (err) {
-          return callback(err);
+          dynamicWait += 5000;
+          return setTimeout(() => {
+            return callback(err);
+          }, dynamicWait);
         }
+        dynamicWait = 0;
         return callback(null, data);
       });
     }
@@ -222,7 +227,7 @@ module.exports = ((parentCls) => {
         }
       );
     }
-  })(AdapterPKU);
+  })(AdapterPOJ);
 
-  return AdapterPKU;
+  return AdapterPOJ;
 })(Adapter);
