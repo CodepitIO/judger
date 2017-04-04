@@ -1,13 +1,14 @@
-const SUPPORTED_LANGS = ['c', 'cpp', 'cpp11', 'java', 'python3'];
+const SUPPORTED_LANGS = ['c', 'cpp', 'cpp11', 'java', 'python2.7', ',python3'];
 
 module.exports = {
   name: 'Kattis',
   submitLang: {
-    'c'       : 'C',
-    'cpp'     : 'C++',
-    'cpp11'   : 'C++',
-    'java'    : 'Java',
-    'python3' : 'Python 3',
+    'c'         : 'C',
+    'cpp'       : 'C++',
+    'cpp11'     : 'C++',
+    'java'      : 'Java',
+    'python2.7' : 'Python 2',
+    'python3'   : 'Python 3',
   },
   verdictId: {
     'New' : -1,

@@ -202,7 +202,7 @@ module.exports = (() => {
 
   function saveProblems(problems, callback) {
     async.eachSeries(problems, (data, next) => {
-      Problem(data).save(next);
+      Problem(data).save(() => { return next() });
     }, callback);
   }
 
