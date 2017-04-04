@@ -25,11 +25,12 @@ module.exports = {
     'Compilation error' : 4,
     'Runtime error' : 5,
     'Output limit exceeded' : 7,
+    'Idleness limit exceeded' : 3,
     'Time limit exceeded' : 3,
     'Memory limit exceeded' : 6,
     'Wrong answer' : 2,
     'Presentation error' : 8,
-    'Accepted' : 1
+    'Accepted' : 1,
   },
   url: 'http://acm.timus.ru',
   getProblemPath: (id) => {
