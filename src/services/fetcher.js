@@ -37,21 +37,19 @@ module.exports = (() => {
     });
   }
 
-  function uploadToS3FromStream(problem, ext, uri, callback) {
-    let pass = new stream.PassThrough();
+  function uploadToS3FromStream(data, ext, body, callback) {
     let filename =
-      problem.id +
+      data.problem.id +
       '_' +
-      crypto.createHash('sha256').update(uri).digest('hex').slice(0,5) +
+      crypto.createHash('sha256').update(data.uri).digest('hex').slice(0,5) +
       ext;
     let params = {
-      Key: path.join('assets/images', problem.oj, filename),
-      Body: pass,
+      Key: path.join('assets/images', data.problem.oj, filename),
+      Body: body,
       ACL: 'public-read',
       CacheControl: 'max-age=31536000',
     };
-    S3.upload(params, callback);
-    return pass;
+    return S3.upload(params, callback);
   };
 
   let uploadImageToS3Queue = async.queue((data, callback) => {
@@ -73,8 +71,12 @@ module.exports = (() => {
         }
         ext = '.' + ext;
         if (ext === '.bin') ext = '';
-        return request(data.uri).pipe(
-          uploadToS3FromStream(data.problem, ext, data.uri, next));
+        return request({url: data.uri, encoding: null}, (err, res, img) => {
+          if (err) {
+            return next(err);
+          }
+          uploadToS3FromStream(data, ext, img, next);
+        });
       },
       (details, next) => {
         if (details && details.key) {
@@ -136,7 +138,6 @@ module.exports = (() => {
   }
 
   function importProblem(problem, callback) {
-    if (!ojs[problem.oj]) return callback(new Error()); // remove
     let data = {};
     let hasImage = false;
     async.waterfall([
