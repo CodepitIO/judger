@@ -31,7 +31,7 @@ module.exports = (() => {
 
   function importSaveFail(problem, callback) {
     if (!problem.imported) problem.importTries++
-    console.log(`<<<<<<< Error! ${problem.id} from ${problem.oj}.`)
+    console.log(`<<< Error! ${problem.id} from ${problem.oj}.`)
     return problem.save(() => {
       return callback && callback(Errors.ImportFailed);
     });
@@ -155,7 +155,6 @@ module.exports = (() => {
       },
     ], (err, details) => {
       if (err) {
-        console.log(err);
         return importSaveFail(problem, callback)
       }
       count++
