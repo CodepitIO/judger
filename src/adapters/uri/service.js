@@ -135,6 +135,7 @@ module.exports = (function(parentCls) {
           data.supportedLangs = Config.getSupportedLangs();
           html = html.replace(/(<)([^a-zA-Z\s\/\\!])/g, '&lt;$2');
           let $ = cheerio.load(html);
+          Util.adjustAnchors($, Config.url + urlPath);
           $('script').remove();
           data.source = $('div.header p').html();
           let tl = $.html().match(TIMELIMIT_PATTERN);
