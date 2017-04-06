@@ -9,10 +9,12 @@ const async   = require('async'),
       _       = require('lodash');
 
 const Adapter       = require('../adapter'),
-      Config        = require('./config'),
-      Errors        = require('../../utils/errors'),
-      RequestClient = require('../../utils/requestClient'),
-      Util          = require('../../utils/util');
+      Errors        = require('../../../common/errors'),
+      RequestClient = require('../../../common/lib/requestClient'),
+      Utils          = require('../../../common/lib/utils');
+
+const TYPE = path.basename(__dirname);
+const Config = Utils.getOJConfig(TYPE);
 
 const LOGIN_PATH        = "/login",
       SUBMIT_PATH       = "/submit",
@@ -21,8 +23,6 @@ const LOGIN_PATH        = "/login",
 const LOGGED_PATTERN          = /Log\s+Out/i,
       LOGIN_FORM_PATTERN      = /<form([^>]+?action\s*=\s*["']?\w*login[^>]*)>((?:.|\r|\n)*?)<\/form>/i,
       NOT_AUTHORIZED_PATTERN  = /Please\s+login\s+first/i;
-
-const TYPE = path.basename(__dirname);
 
 module.exports = ((parentCls) => {
 
@@ -39,7 +39,7 @@ module.exports = ((parentCls) => {
         (res, html, next) => {
           let f, opts;
           try {
-            f = Util.parseForm(LOGIN_FORM_PATTERN, html);
+            f = Utils.parseForm(LOGIN_FORM_PATTERN, html);
             f.data[f.userField] = acct.getUser();
             f.data[f.passField] = acct.getPass();
             opts = {
@@ -130,104 +130,6 @@ module.exports = ((parentCls) => {
 
     this._judge = judge;
   }
-
-  // Problems Fetcher
-  (function(obj) {
-    const client = new RequestClient(Config.url);
-
-    const PROBLEMS_PATH_UNF = "/problemlist?volume=%s";
-
-    const TIMELIMIT_PATTERN = /time\s*limit:\s*([\d.,]+)\s*\w/i;
-    const MEMOLIMIT_PATTERN = /memory\s*limit:\s*([\d\w\s]+)/i;
-
-    let dynamicWait = 0;
-
-    obj.import = (problem, callback) => {
-      let urlPath = Config.getProblemPath(problem.id);
-      client.get(urlPath, (err, res, html) => {
-        let data = {};
-        try {
-          if (err) throw err;
-          data.supportedLangs = Config.getSupportedLangs();
-          html = html.replace(/(<)([^a-zA-Z\s\/\\!])/g, '&lt;$2');
-          let $ = cheerio.load(html);
-          Util.adjustAnchors($, Config.url + urlPath);
-          let header = $('.plm');
-          let match;
-          if (match = header.text().match(TIMELIMIT_PATTERN)) {
-            data.timelimit = parseFloat(match[1]) / 1000.;
-          }
-          if (match = header.text().match(MEMOLIMIT_PATTERN)) {
-            data.memorylimit = Math.round(parseFloat(match[1]) / 1024.) + ' MB';
-          }
-          let body = '<div class="poj-problem problem-statement ttypography">';
-          let parent = $('p.pst').parent();
-          if (parent.children().slice(-2).html() === 'Source') {
-            data.source = 'Source: ' + parent.children().slice(-1).text();
-          }
-          parent.children().slice(0,4).remove();
-          if (data.source) {
-            parent.children().slice(-2).remove();
-          }
-          assert(parent.html().length > 0);
-          body += parent.html();
-          body += '</div>' +
-           '<script>' +
-             '$(function() { MathJax.Hub.Typeset("poj"); });' +
-           '</script>';
-          data.html = body;
-        } catch (err) {
-          dynamicWait += 5000;
-          return setTimeout(() => {
-            return callback(err);
-          }, dynamicWait);
-        }
-        dynamicWait = 0;
-        return callback(null, data);
-      });
-    }
-
-    function processProblems(problemsPath, problems, callback) {
-      client.get(problemsPath, (err, res, html) => {
-        html = html || '';
-        let $ = cheerio.load(html);
-        let problemsList = $('form').next().children('tr');
-        if (problemsList.length <= 1) {
-          return callback(new Error("No problems to parse"));
-        }
-        let problemMatches = problemsList.each((i, item) => {
-          if (i == 0) return;
-          try {
-            let id = $(item).children().eq(0).text();
-            let name = $(item).children().eq(1).text();
-            if (id && name) {
-              problems.push({
-                id: id,
-                name: name,
-                oj: TYPE
-              });
-            }
-          } catch (e) {}
-        });
-        return callback(null, problems);
-      });
-    }
-
-    obj.fetchProblems = (callback) => {
-      let problems = [];
-      let idx = 1;
-      async.forever(
-        (next) => {
-          let problemsPath = util.format(PROBLEMS_PATH_UNF, idx);
-          idx = idx + 1;
-          return processProblems(problemsPath, problems, next);
-        },
-        (err) => {
-          return callback(null, problems);
-        }
-      );
-    }
-  })(AdapterPOJ);
 
   return AdapterPOJ;
 })(Adapter);

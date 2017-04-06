@@ -2,24 +2,17 @@
 
 const fs    = require('fs'),
       path  = require('path'),
-      async = require('async'),
-      util  = require('util'),
-      _     = require('lodash');
+      async = require('async');
 
-const Defaults  = require('../config/defaults'),
-      Errors    = require('../utils/errors'),
-      Utils     = require('../utils/util');
+const Errors  = require('../../common/errors'),
+      Utils   = require('../../common/lib/utils');
 
-const SubmissionStatus  = Defaults.submissionStatus;
-
-// Maps from typeName to class function
-let AdapterService = {};
-let AdapterConfig = {};
+const SubmissionStatus  = require('../../common/constants').JUDGE.STATUS;
 
 module.exports = (function() {
   // constructor
   function Adapter(acct) {
-    const Config = AdapterConfig[acct.getType()];
+    const Config = Utils.getOJConfig(acct.getType());
 
     let lastSubmission = 0;
     let judgeSet = {};
@@ -104,58 +97,10 @@ module.exports = (function() {
 
   // public static methods
   Adapter.create = (acct) => {
-    let clsFn = AdapterService[acct.type];
+    let clsFn = require(`./${acct.type}/service`);
     if (clsFn) return new clsFn(acct);
     return null;
   };
 
-  Adapter.fetchProblems = (type, callback) => {
-    return AdapterService[type].fetchProblems(callback);
-  }
-
-  (function (obj) {
-    let importQueues = {};
-
-    function getOrCreateQueue(type) {
-      if (!importQueues[type]) {
-        importQueues[type] = async.queue((problem, callback) => {
-          if (AdapterService[type].import) {
-            // We wait at most 2 minutes to import a problem
-            return async.timeout((callback) => {
-              AdapterService[type].import(problem, callback);
-            }, 2 * 60 * 1000)(callback);
-          }
-          return async.setImmediate(callback, Errors.NoImportForOJ);
-        }, AdapterConfig[type].maxImportWorkers || 3);
-      }
-      return importQueues[type];
-    }
-
-    obj.import = (type, problem, callback) => {
-      getOrCreateQueue(type).push(problem, callback);
-    }
-  })(Adapter);
-
   return Adapter;
-})();
-
-/*
- * Auto load the adapters
- */
-(function(){
-  let files = fs.readdirSync(__dirname);
-  for (let i=0; i < files.length; i++) {
-    try {
-      let oj = files[i];
-      let ojDir = path.join(__dirname, oj);
-      let stat = fs.statSync(ojDir);
-      if (stat.isDirectory() && !oj.startsWith('_')) {
-        AdapterConfig[oj] = require(path.join(ojDir, 'config'));
-        AdapterService[oj] = require(path.join(ojDir, 'service'));
-        console.log(`Loaded ${AdapterConfig[oj].name} adapter`);
-      }
-    } catch (e) {
-      console.log(e);
-    }
-  }
 })();

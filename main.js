@@ -1,24 +1,6 @@
 'use strict';
 
-const async       = require('async');
-
 const Dbs     = require('./src/services/dbs'),
-      Judger  = require('./src/services/judger'),
-      Fetcher = require('./src/services/fetcher');
+      Judger  = require('./src/services/judger');
 
-if (process.env.NODE_ENV === 'development') {
-
-}
-
-function start() {
-  async.waterfall([
-    Judger.start,
-    Fetcher.start,
-  ], (err) => {
-    if (err) {
-      console.log(err);
-    }
-  });
-}
-
-start();
+Judger.start();

@@ -3,7 +3,7 @@
 const async       = require('async'),
       kue         = require('kue');
 
-const OjAccount       = require('../models/oj_account'),
+const OjAccount       = require('../../common/models/oj_account'),
       OnlineJudge     = require('./oj'),
       SubmissionQueue = require('./queue').SubmissionQueue;
 
@@ -32,15 +32,6 @@ module.exports = (() => {
     });
   }
 
-  function loginJudgers(callback) {
-    if (process.env.NODE_ENV !== 'development') {
-      for (var name in ojs) {
-        ojs[name].login();
-      }
-    }
-    return callback();
-  }
-
   function startJudgers(callback) {
     for (var name in ojs) {
       ojs[name].start();
@@ -52,10 +43,9 @@ module.exports = (() => {
     reloadActiveTasks();
     async.series([
       loadJudgersAccounts,
-      loginJudgers,
       startJudgers,
     ], () => {
-      return callback(null, ojs);
+      return callback && callback();
     });
   }
 

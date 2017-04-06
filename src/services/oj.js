@@ -2,19 +2,19 @@
 
 const async   = require('async');
 
-const Adapter           = require('../adapters/adapter'),
-      Submission        = require('../models/submission'),
-      Errors            = require('../utils/errors'),
-      Defaults          = require('../config/defaults'),
-      SubmissionQueue   = require('./queue').SubmissionQueue;
+const Adapter         = require('../adapters/adapter'),
+      Submission      = require('../../common/models/submission'),
+      Errors          = require('../../common/errors'),
+      SubmissionQueue = require('./queue').SubmissionQueue,
+      Utils           = require('../../common/lib/utils');
 
-const SubmissionStatus  = Defaults.submissionStatus;
+const SubmissionStatus  = require('../../common/constants').JUDGE.STATUS;
 
 module.exports = (function() {
   function OnlineJudge(type) {
     this.type = type;
 
-    const Config = require(`../adapters/${type}/config`);
+    const Config = Utils.getOJConfig(type);
     let adapters = [];
     let curAdapter = -1;
 
@@ -90,10 +90,6 @@ module.exports = (function() {
       let newAdapter = Adapter.create(acct);
       if (newAdapter) adapters.push(newAdapter);
     }
-
-    this.fetchProblems = Adapter.fetchProblems.bind(null, type);
-
-    this.import = Adapter.import.bind(null, type);
   }
 
   return OnlineJudge;

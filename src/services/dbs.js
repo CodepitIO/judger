@@ -1,32 +1,25 @@
 'use strict';
 
 const redis     = require('redis'),
-      mongoose  = require('mongoose'),
-      aws       = require('aws-sdk');
+      mongoose  = require('mongoose');
 
-const mongoUrl = `mongodb://mongo:27017/maratonando`;
+const C = require('../../common/constants');
 
 mongoose.Promise = require('bluebird')
-mongoose.connect(mongoUrl)
+mongoose.connect(C.CONN.MONGO.GET_URL());
 
 var redisClient = redis.createClient({
-  host: 'redis',
+  host: C.CONN.REDIS.HOST,
   prefix: process.env.NODE_ENV,
 });
 
-redisClient.on('error', (err) => {
-  console.log(err);
-});
+redisClient.on('error', console.log);
 
 exports.redisClient = redisClient;
 
 exports.createRedisClient = () => {
   return redis.createClient({
-    host: 'redis',
+    host: C.CONN.REDIS.HOST,
     prefix: process.env.NODE_ENV,
   });
 }
-
-let bucket = (process.env.NODE_ENV !== 'development') ?
-  'codepit' : 'codepit-dev';
-exports.S3 = new aws.S3({params: {Bucket: bucket}})

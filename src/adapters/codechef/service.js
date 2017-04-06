@@ -9,11 +9,12 @@ const cheerio = require('cheerio'),
       fs      = require('fs');
 
 const Adapter       = require('../adapter'),
-      Errors        = require('../../utils/errors'),
-      RequestClient = require('../../utils/requestClient'),
-      Util          = require('../../utils/util'),
-      Defaults      = require('../../config/defaults'),
-      Config        = require('./config')
+      Errors        = require('../../../common/errors'),
+      RequestClient = require('../../../common/lib/requestClient'),
+      Utils          = require('../../../common/lib/utils');
+
+const TYPE = path.basename(__dirname);
+const Config = Utils.getOJConfig(TYPE);
 
 const SUBMIT_PATH       = "/submit/%s",
       SESSION_LIMIT     = "/session/limit",
@@ -26,8 +27,6 @@ const LOGGED_PATTERN              = /edit\s+profile/i,
       SESSION_LIMIT_FORM_PATTERN  = /<form([^>]+?id\s*=\s*["']?\w*session-limit-page[^>]*)>((?:.|\r|\n)*?)<\/form>/i,
       VERDICT_PATTERN1            = /title="(\w+)[^"]*"/i,
       VERDICT_PATTERN2            = /src="([^"]*)"/i;
-
-const TYPE = path.basename(__dirname);
 
 module.exports = ((parentCls) => {
 
@@ -47,7 +46,7 @@ module.exports = ((parentCls) => {
         (res, html, next) => {
           let f, opts;
           try {
-            f = Util.parseForm(LOGIN_FORM_PATTERN, html);
+            f = Utils.parseForm(LOGIN_FORM_PATTERN, html);
             f.data['name'] = acct.getUser();
             f.data['pass'] = acct.getPass();
             opts = {
@@ -76,7 +75,7 @@ module.exports = ((parentCls) => {
         let $ = cheerio.load(html)
         let sid = $('#session-limit-page .form-radios .form-item input:not(:contains("current"))').first().val()
         if (!sid) return callback()
-        let f = Util.parseForm(SESSION_LIMIT_FORM_PATTERN, html);
+        let f = Utils.parseForm(SESSION_LIMIT_FORM_PATTERN, html);
         if (!f) return callback(Errors.LoginFail)
         let opts = {
           followAllRedirects: true,
@@ -100,7 +99,7 @@ module.exports = ((parentCls) => {
       let langName = _.findKey(Config.submitLang, (o) => {
         return o === submission.language;
       });
-      let fileName = "Main" + Defaults.extensions[langName];
+      let fileName = "Main" + Utils.getExtension(langName);
       let id;
 
       async.waterfall([
@@ -118,7 +117,7 @@ module.exports = ((parentCls) => {
         (res, html, next) => {
           let f, opts;
           try {
-            f = Util.parseForm(SUBMIT_FORM_PATTERN, html);
+            f = Utils.parseForm(SUBMIT_FORM_PATTERN, html);
             opts = {
               followAllRedirects: true,
               headers: { Referer: Config.url },
@@ -212,7 +211,7 @@ module.exports = ((parentCls) => {
           data.supportedLangs = supportedLangs;
           let html = meta.body.replace(/(<)([^a-zA-Z\s\/\\!])/g, '&lt;$2');
           let $ = cheerio.load(html);
-          Util.adjustAnchors($, Config.url + urlPath);
+          Utils.adjustAnchors($, Config.url + urlPath);
           $('.solution-visible-txt').remove();
           while (true) {
             let firstElem = $('*').first();

@@ -2,9 +2,8 @@
 
 const kue   = require('kue')
 
-const SubmissionStatus  = require('../config/defaults').submissionStatus,
-      Publisher         = require('./publisher'),
-      DownloadFile      = require('../utils/util').downloadFile
+const SubmissionStatus  = require('../../common/constants').JUDGE.STATUS,
+      Publisher         = require('./publisher')
 
 // --- SUBMISSION QUEUE ---
 

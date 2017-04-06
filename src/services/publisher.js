@@ -1,15 +1,13 @@
 const kue   = require('kue'),
       async = require('async'),
-      _     = require('lodash'),
       util  = require('util')
 
 const Redis       = require('./dbs').redisClient,
-      Defaults    = require('../config/defaults'),
-      Submission  = require('../models/submission')
+      Submission  = require('../../common/models/submission')
 
 function updateScoreboard(s, callback) {
   let timestamp = new Date(s.date).getTime()
-  let status = Defaults.scoreboardStatusName[Defaults.getScoreboardStatus(s.verdict)]
+  let status = Utils.getScoreboardStatusName(s.verdict);
 
   let pendingSortedSetKey = `${s.contest}:PENDING`
   let accTimestampKey = `${s.contest}:${s.rep}:${s.problem}:ACC_TIMESTAMP`
