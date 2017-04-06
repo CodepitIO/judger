@@ -3,7 +3,8 @@ const kue   = require('kue'),
       util  = require('util')
 
 const Redis       = require('./dbs').redisClient,
-      Submission  = require('../../common/models/submission')
+      Submission  = require('../../common/models/submission'),
+      Utils       = require('../../common/lib/utils')
 
 function updateScoreboard(s, callback) {
   let timestamp = new Date(s.date).getTime()

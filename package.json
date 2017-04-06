@@ -13,6 +13,7 @@
   "main": "main",
   "dependencies": {
     "async": "^2.0.0",
+    "bcrypt": "^1.0.2",
     "bluebird": "^3.4.1",
     "cheerio": "^0.20.0",
     "extend": "3.0.0",

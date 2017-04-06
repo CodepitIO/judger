@@ -17,6 +17,7 @@ SubmissionQueue.on('job progress', (id, progress, data) => {
 });
 
 SubmissionQueue.on('job failed', (id, err) => {
+  console.log(id, err);
   Publisher.updateSubmission(id, { oj_id: -1, verdict: SubmissionStatus.SUBMISSION_ERROR});
 });
 

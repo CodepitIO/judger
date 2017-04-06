@@ -57,8 +57,11 @@ module.exports = (function() {
         if (judging) {
           adapter.removeSubmissionHandler(submission);
         }
-        if (err == Errors.InternalError) {
+        if (err === Errors.InternalError) {
           job.progress({oj_id: -1, verdict: SubmissionStatus.INTERNAL_ERROR});
+          return done();
+        } else if (err === Errors.UnretriableError) {
+          job.progress({oj_id: -1, verdict: SubmissionStatus.SUBMISSION_ERROR});
           return done();
         } else if (err) {
           return done(err);

@@ -96,6 +96,8 @@ module.exports = (function(parentCls) {
       ], (err) => {
         if (err && !retry) {
           return callback(err);
+        } else if (browser.html().match(/should\s+satisfy\s+regex/i)) {
+          return callback(Errors.UnretriableError);
         } else if (browser.location.pathname !== STATUS_PATH) {
           if (!retry) {
             return callback(Errors.SubmissionFail);
