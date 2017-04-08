@@ -7,34 +7,36 @@ const Redis       = require('./dbs').redisClient,
       Utils       = require('../../common/lib/utils')
 
 function updateScoreboard(s, callback) {
-  let timestamp = new Date(s.date).getTime()
+  let timestamp = new Date(s.date).getTime();
   let status = Utils.getScoreboardStatusName(s.verdict);
+  if (status === 'FAIL') {
+    return callback();
+  }
 
-  let pendingSortedSetKey = `${s.contest}:PENDING`
-  let accTimestampKey = `${s.contest}:${s.rep}:${s.problem}:ACC_TIMESTAMP`
+  let pendingSortedSetKey = `${s.contest}:PENDING`;
+  let accTimestampKey = `${s.contest}:${s.rep}:${s.problem}:ACC_TIMESTAMP`;
 
-  let sortedSetKey = util.format(`${s.contest}:%s`, status)
-  let sortedSetValue = `${s.rep},${s.problem},${status},${timestamp}`
+  let sortedSetKey = util.format(`${s.contest}:%s`, status);
+  let sortedSetValue = `${s.rep},${s.problem},${status},${timestamp}`;
 
   async.waterfall([
     (next) => {
-      Redis.zremrangebyscore(pendingSortedSetKey, timestamp, timestamp, next)
+      Redis.zremrangebyscore(pendingSortedSetKey, timestamp, timestamp, next);
     },
     (cnt, next) => {
-      if (status === 'FAIL') return callback()
-      Redis.get(accTimestampKey, next)
+      Redis.get(accTimestampKey, next);
     },
     (accTimestamp, next) => {
-      if (accTimestamp && accTimestamp <= timestamp) return callback()
+      if (accTimestamp && accTimestamp <= timestamp) return callback();
       if (status === 'ACCEPTED') {
-        return Redis.set(accTimestampKey, timestamp, next)
+        return Redis.set(accTimestampKey, timestamp, next);
       }
-      next(null,0)
+      next(null,0);
     },
     (ok, next) => {
-      Redis.zadd(sortedSetKey, timestamp, sortedSetValue, next)
+      Redis.zadd(sortedSetKey, timestamp, sortedSetValue, next);
     }
-  ], callback)
+  ], callback);
 }
 
 function updateSubmission(queueId, data) {
