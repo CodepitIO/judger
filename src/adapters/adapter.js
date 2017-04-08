@@ -82,7 +82,8 @@ module.exports = (function() {
       let data = {
         language: language,
         code: code,
-        problemId: submission.problem.id,
+        // if substitute id is set, give preference to it
+        problemId: submission.problem.sid || submission.problem.id,
       };
       let interval = Config.intervalPerAdapter || 0;
       let currentTime = (new Date()).getTime();
