@@ -17,8 +17,7 @@ const TYPE = path.basename(__dirname);
 const Config = Utils.getOJConfig(TYPE);
 
 const LOGIN_PAGE_PATH   = "/enter",
-      SUBMIT_PAGE_PATH  = "/problemset/submit",
-      STATUS_PATH       = "/problemset/status",
+      SUBMIT_PAGE_PATH  = "/gym/%s/submit",
       SUBMISSIONS_API   = "/api/user.status?handle=%s&count=%s";
 
 const LOGIN_TEST_REGEX      = /logout/i,
@@ -70,16 +69,20 @@ module.exports = (function(parentCls) {
     };
 
     function send(submission, retry, callback) {
+      let match = /(\d+)\/(.+)/.exec(submission.problemId);
+      let contestId = match[1];
+      let problemId = match[2];
+      let submitPagePath = util.format(SUBMIT_PAGE_PATH, contestId);
       async.waterfall([
         (next) => {
-          browser.visit(Config.url + SUBMIT_PAGE_PATH, next);
+          browser.visit(Config.url + submitPagePath, next);
         },
         (next) => {
           if (browser.location.pathname === LOGIN_PAGE_PATH) {
             return next(Errors.LoginFail);
           }
           browser
-            .fill('input[name="submittedProblemCode"]', submission.problemId)
+            .select('select[name="submittedProblemIndex"]', problemId)
             .select('select[name="programTypeId"]', submission.language)
             .fill('#sourceCodeTextarea', submission.code)
             .pressButton('input[value="Submit"]', next);
@@ -97,7 +100,7 @@ module.exports = (function(parentCls) {
           return callback(err);
         } else if (browser.html().match(/should\s+satisfy\s+regex/i)) {
           return callback(Errors.UnretriableError);
-        } else if (browser.location.pathname !== STATUS_PATH) {
+        } else if (!browser.location.pathname.match(/\/my$/)) {
           if (!retry) {
             return callback(Errors.SubmissionFail);
           } else {

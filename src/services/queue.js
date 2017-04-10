@@ -2,8 +2,8 @@
 
 const kue   = require('kue')
 
-const SubmissionStatus  = require('../../common/constants').JUDGE.STATUS,
-      Publisher         = require('./publisher')
+const JUDGE     = require('../../common/constants').JUDGE,
+      Publisher = require('./publisher')
 
 // --- SUBMISSION QUEUE ---
 
@@ -13,12 +13,13 @@ var SubmissionQueue = kue.createQueue({
 });
 
 SubmissionQueue.on('job progress', (id, progress, data) => {
+  console.log(id, data.oj_id, JUDGE.VERDICT[data.verdict]);
   Publisher.updateSubmission(id, data);
 });
 
 SubmissionQueue.on('job failed', (id, err) => {
   console.log(id, err);
-  Publisher.updateSubmission(id, { oj_id: -1, verdict: SubmissionStatus.SUBMISSION_ERROR});
+  Publisher.updateSubmission(id, { oj_id: -1, verdict: JUDGE.STATUS.SUBMISSION_ERROR});
 });
 
 SubmissionQueue.watchStuckJobs(60 * 1000);
