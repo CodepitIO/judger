@@ -17,7 +17,8 @@ const TYPE = path.basename(__dirname);
 const Config = Utils.getOJConfig(TYPE);
 
 const LOGIN_PAGE_PATH   = "/enter",
-      SUBMIT_PAGE_PATH  = "/gym/%s/submit",
+      GYM_SUBMIT_PAGE_PATH  = "/gym/%s/submit",
+      GROUP_SUBMIT_PAGE_PATH  = "/group/%s/contest/%s/submit",
       SUBMISSIONS_API   = "/api/user.status?handle=%s&count=%s";
 
 const LOGIN_TEST_REGEX      = /logout/i,
@@ -69,10 +70,15 @@ module.exports = (function(parentCls) {
     };
 
     function send(submission, retry, callback) {
-      let match = /(\d+)\/(.+)/.exec(submission.problemId);
-      let contestId = match[1];
-      let problemId = match[2];
-      let submitPagePath = util.format(SUBMIT_PAGE_PATH, contestId);
+      let split = _.split(submission.problemId, '/');
+      let problemId;
+      if (split.length === 3) {
+        problemId = split[2];
+        submitPagePath = util.format(GROUP_SUBMIT_PAGE_PATH, split[0], split[1], split[2]);
+      } else {
+        problemId = split[1];
+        submitPagePath = util.format(GYM_SUBMIT_PAGE_PATH, split[0], split[1]);
+      }
       async.waterfall([
         (next) => {
           browser.visit(Config.url + submitPagePath, next);
