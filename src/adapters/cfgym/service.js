@@ -74,10 +74,10 @@ module.exports = (function(parentCls) {
       let submitPagePath, problemId;
       if (split.length === 3) {
         problemId = split[2];
-        submitPagePath = util.format(GROUP_SUBMIT_PAGE_PATH, split[0], split[1], split[2]);
+        submitPagePath = util.format(GROUP_SUBMIT_PAGE_PATH, split[0], split[1]);
       } else {
         problemId = split[1];
-        submitPagePath = util.format(GYM_SUBMIT_PAGE_PATH, split[0], split[1]);
+        submitPagePath = util.format(GYM_SUBMIT_PAGE_PATH, split[0]);
       }
       async.waterfall([
         (next) => {
