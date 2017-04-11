@@ -71,7 +71,7 @@ module.exports = (function(parentCls) {
 
     function send(submission, retry, callback) {
       let split = _.split(submission.problemId, '/');
-      let problemId;
+      let submitPagePath, problemId;
       if (split.length === 3) {
         problemId = split[2];
         submitPagePath = util.format(GROUP_SUBMIT_PAGE_PATH, split[0], split[1], split[2]);
