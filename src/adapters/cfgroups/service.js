@@ -16,16 +16,16 @@ const Adapter       = require('../adapter'),
 const TYPE = path.basename(__dirname);
 const Config = Utils.getOJConfig(TYPE);
 
-const LOGIN_PAGE_PATH       = "/enter",
-      GYM_SUBMIT_PAGE_PATH  = "/gym/%s/submit",
-      SUBMISSIONS_API       = "/api/user.status?handle=%s&count=%s";
+const LOGIN_PAGE_PATH         = "/enter",
+      GROUP_SUBMIT_PAGE_PATH  = "/group/%s/contest/%s/submit",
+      SUBMISSIONS_API         = "/group/%s/status?showUnofficial=on";
 
-const LOGIN_TEST_REGEX  = /logout/i,
-      LLD_REGEX         = /preferred\s+to\s+use\s+cin/i;
+const LOGIN_TEST_REGEX      = /logout/i,
+      LLD_REGEX             = /preferred\s+to\s+use\s+cin/i;
 
 module.exports = (function(parentCls) {
 
-  function AdapterCFGym(acct) {
+  function AdapterCFGroups(acct) {
     parentCls.call(this, acct);
 
     let browser = new Browser({runScripts: false, strictSSL: false});
@@ -54,12 +54,15 @@ module.exports = (function(parentCls) {
 
     this._login = login;
 
-    function getSubmissionId(callback) {
-      let submissionsUrl = util.format(SUBMISSIONS_API, acct.getUser(), 1);
-      client.get(submissionsUrl, {json: true}, (err, res, data) => {
+    function getSubmissionId(groupId, callback) {
+      let submissionsUrl = util.format(SUBMISSIONS_API, groupId);
+      client.get(submissionsUrl, (err, res, html) => {
         let id;
         try {
-          id = data.result[0].id + '';
+          let $ = cheerio.load(html);
+          id = _.trim(
+            $(`td[data-participantid="${acct.getId()}"]`).first().prev().prev().text()
+          );
           assert(id && id.length >= 6);
         } catch (e) {
           return callback(Errors.SubmissionFail);
@@ -70,8 +73,10 @@ module.exports = (function(parentCls) {
 
     function send(submission, retry, callback) {
       let split = _.split(submission.problemId, '/');
-      let submitPagePath = util.format(GYM_SUBMIT_PAGE_PATH, split[0]);
-      let problemId = split[1];
+      let groupId = split[0];
+      let contestId = split[1];
+      let problemId = split[2];
+      let submitPagePath = util.format(GROUP_SUBMIT_PAGE_PATH, groupId, contestId);
       async.waterfall([
         (next) => {
           browser.visit(Config.url + submitPagePath, next);
@@ -110,7 +115,7 @@ module.exports = (function(parentCls) {
             });
           }
         }
-        return getSubmissionId(callback);
+        return getSubmissionId(groupId, callback);
       });
     };
 
@@ -119,20 +124,30 @@ module.exports = (function(parentCls) {
     }
 
     function judge(judgeSet, callback) {
-      let submissionsUrl = util.format(SUBMISSIONS_API, acct.getUser(), 30);
-      client.get(submissionsUrl, {json: true}, (err, res, data) => {
-        data = data && data.result || [];
-        for (let i = 0; i < data.length; i++) {
-          if (judgeSet[data[i].id]) {
-            judgeSet[data[i].id].verdict = data[i].verdict;
-          }
-        }
-        return callback();
-      });
+      let groups = _.chain(judgeSet)
+        .values()
+        .groupBy((o) => {
+          return _.split(o.submission.problem.sid, '/')[0];
+        })
+        .value();
+      async.eachOf(groups, (gJudgeSet, groupId, next) => {
+        let submissionsUrl = util.format(SUBMISSIONS_API, groupId);
+        client.get(submissionsUrl, (err, res, html) => {
+          let $ = cheerio.load(html);
+          _.forEach(gJudgeSet, (o) => {
+            try {
+              let id = o.submission.oj_id;
+              let verdict = $(`span[submissionid="${id}"]`).attr('submissionverdict');
+              judgeSet[id].verdict = verdict;
+            } catch (e) {}
+          });
+          return next();
+        });
+      }, callback);
     }
 
     this._judge = judge;
   }
 
-  return AdapterCFGym;
+  return AdapterCFGroups;
 })(Adapter);
