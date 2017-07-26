@@ -6,9 +6,11 @@ const redis     = require('redis'),
 const C = require('../../common/constants');
 
 mongoose.Promise = require('bluebird')
-mongoose.connect(C.CONN.MONGO.GET_URL());
+mongoose.connect(C.CONN.MONGO.GET_URL(), {
+  useMongoClient: true,
+});
 
-var redisClient = redis.createClient({
+const redisClient = redis.createClient({
   host: C.CONN.REDIS.HOST,
   prefix: process.env.NODE_ENV,
 });

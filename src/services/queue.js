@@ -3,12 +3,15 @@
 const kue   = require('kue')
 
 const JUDGE     = require('../../common/constants').JUDGE,
+      Dbs     = require('./dbs'),
       Publisher = require('./publisher')
 
 // --- SUBMISSION QUEUE ---
 
 var SubmissionQueue = kue.createQueue({
-  redis: { host: 'redis' },
+  redis: {
+    createClientFactory: Dbs.createRedisClient,
+  },
   jobEvents: false,
 });
 
@@ -23,5 +26,7 @@ SubmissionQueue.on('job failed', (id, err) => {
 });
 
 SubmissionQueue.watchStuckJobs(60 * 1000);
+
+SubmissionQueue.setMaxListeners(500);
 
 exports.SubmissionQueue = SubmissionQueue
