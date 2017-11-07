@@ -33,6 +33,7 @@ module.exports = (function(parentCls) {
     let client = new RequestClient(Config.url);
 
     function login(callback) {
+      console.log('Logging to CF...');
       async.waterfall([
         (next) => {
           browser.visit(Config.url + LOGIN_PAGE_PATH, next)
@@ -47,8 +48,10 @@ module.exports = (function(parentCls) {
       ], (err) => {
         let html = browser.html() || '';
         if (!html.match(LOGIN_TEST_REGEX)) {
-          return callback(Errors.LoginFail);
+          console.log('CF login fail');
+          return login(callback);
         }
+        console.log('CF login succeed!');
         return callback(null);
       });
     };
