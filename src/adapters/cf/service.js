@@ -29,23 +29,25 @@ module.exports = (function(parentCls) {
   function AdapterCF(acct) {
     parentCls.call(this, acct);
 
-    let browser = new Browser({runScripts: false, strictSSL: false});
+    let browser = new Browser({runScripts: true, strictSSL: false, waitDuration: 100000});
     let client = new RequestClient(Config.url);
 
     function login(callback) {
       console.log('Logging to CF...');
       async.waterfall([
         (next) => {
+          console.log(Config.url + LOGIN_PAGE_PATH);
           browser.visit(Config.url + LOGIN_PAGE_PATH, next)
         },
         (next) => {
           browser
-            .fill('#handle', acct.getUser())
+            .fill('#handleOrEmail', acct.getUser())
             .fill('#password', acct.getPass())
             .check('#remember')
             .pressButton('input[value="Login"]', next);
         }
       ], (err) => {
+        console.log(err);
         let html = browser.html() || '';
         if (!html.match(LOGIN_TEST_REGEX)) {
           console.log('CF login fail');
