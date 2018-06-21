@@ -71,9 +71,12 @@ module.exports = ((parentCls) => {
     };
 
     function handleSessionLimit(html, callback) {
+      var i = 0;
       async.forever((next) => {
+        i++;
         let $ = cheerio.load(html)
-        let sid = $('#session-limit-page .form-radios .form-item input:not(:contains("current"))').first().val()
+        require('fs').writeFileSync('lol' + i + '.html', html);
+        let sid = $('#session-limit-page .form-checkboxes .form-item input:not(:contains("current"))').first().val()
         if (!sid) return callback()
         let f = Utils.parseForm(SESSION_LIMIT_FORM_PATTERN, html);
         if (!f) return callback(Errors.LoginFail)
@@ -81,7 +84,7 @@ module.exports = ((parentCls) => {
           followAllRedirects: true,
           headers: { Referer: Config.url, },
         };
-        f.data.sid = sid;
+        f.data[`sid[${sid}]`] = sid;
         client.post(SESSION_LIMIT, f.data, opts, (err, res, _html) => {
           html = _html
           if (err || !html) return callback()
@@ -160,7 +163,6 @@ module.exports = ((parentCls) => {
           acct.getUser(),
           1000000000 + Math.floor(Math.random()*1000000000));
       client.get(userSubmissionsPath, (err, res, html) => {
-        fs.writeFileSync('lol.html', html, 'utf8');
         html = html || '';
         let $ = cheerio.load(html);
         for (let id in judgeSet) {

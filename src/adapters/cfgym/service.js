@@ -28,7 +28,7 @@ module.exports = (function(parentCls) {
   function AdapterCFGym(acct) {
     parentCls.call(this, acct);
 
-    let browser = new Browser({runScripts: false, strictSSL: false});
+    let browser = new Browser({runScripts: true, strictSSL: false, waitDuration: 100000});
     let client = new RequestClient(Config.url);
 
     function login(callback) {
@@ -38,7 +38,7 @@ module.exports = (function(parentCls) {
         },
         (next) => {
           browser
-            .fill('#handle', acct.getUser())
+            .fill('#handleOrEmail', acct.getUser())
             .fill('#password', acct.getPass())
             .check('#remember')
             .pressButton('input[value="Login"]', next);
@@ -46,7 +46,7 @@ module.exports = (function(parentCls) {
       ], (err) => {
         let html = browser.html() || '';
         if (!html.match(LOGIN_TEST_REGEX)) {
-          return callback(Errors.LoginFail);
+          return login(callback);
         }
         return callback(null);
       });

@@ -75,6 +75,8 @@ module.exports = (function(parentCls) {
           browser.visit('file://' + SUBMIT_PATH, next);
         },
         (next) => {
+          console.log(submission.problemId);
+          console.log(submission.language);
           browser
             .fill('input[name="problemcode"]', submission.problemId)
             .select('select[name="lang"]', submission.language)
@@ -97,6 +99,7 @@ module.exports = (function(parentCls) {
         } else if (html.match(WRONG_LANGUAGE_REGEX)) {
           return callback(Errors.InternalError);
         } else {
+          require('fs').writeFileSync('lol.html', html);
           return getSubmissionId(callback);
         }
       });
