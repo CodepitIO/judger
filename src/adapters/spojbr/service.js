@@ -99,7 +99,6 @@ module.exports = (function(parentCls) {
         } else if (html.match(WRONG_LANGUAGE_REGEX)) {
           return callback(Errors.InternalError);
         } else {
-          require('fs').writeFileSync('lol.html', html);
           return getSubmissionId(callback);
         }
       });
