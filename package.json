@@ -22,7 +22,7 @@
     "lodash": "^4.17.4",
     "mongoose": "^4.11.4",
     "puppeteer": "^1.5.0",
-    "redis": "^2.7.1",
+    "redis": "^2.8.0",
     "request": "^2.81.0",
     "zombie": "git+https://git@github.com/godely/zombie.git"
   }

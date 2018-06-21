@@ -4,12 +4,13 @@ const kue   = require('kue'),
 
 const Redis       = require('./dbs').redisClient,
       Submission  = require('../../common/models/submission'),
-      Utils       = require('../../common/lib/utils')
+      Utils       = require('../../common/lib/utils'),
+      Queue       = require('./queue')
 
 function updateScoreboard(s, callback) {
   let timestamp = new Date(s.date).getTime();
   let status = Utils.getScoreboardStatusName(s.verdict);
-  if (status === 'FAIL') {
+  if (status === 'ERROR' || status === 'PENDING') {
     return callback();
   }
 
@@ -46,8 +47,8 @@ function updateSubmission(queueId, data) {
       Submission.findById(job.data.id, next);
     },
     (submission, next) => {
-      if (!submission) return next(new Error())
-      if (submission.verdict > 0 && submission.verdict < 12) return next()
+      if (!submission) return next(new Error(), null)
+      if (submission.verdict > 0 && submission.verdict < 12) return next(new Error(), null)
       for (var i in data) submission[i] = data[i]
       submission.save(next)
     },
@@ -59,5 +60,40 @@ function updateSubmission(queueId, data) {
   });
 }
 
+function populateRedis(callback) {
+  var i = 1;
+  // var last = parseInt(require('fs').readFileSync('./populateidx.txt'));
+  Submission.find()
+  .sort({ "date": 1 })
+  //.populate({ path: 'problem', select: 'oj' })
+  .then((submissions) => {
+    console.log(submissions.length);
+    async.eachSeries(submissions, (submission, next) => {
+      // if (i < last) {
+      //   i++;
+      //   return next();
+      // }
+      // last = i;
+      // require('fs').writeFileSync('./populateidx.txt', i);
+      let status = Utils.getScoreboardStatusName(submission.verdict);
+      console.log(i, submission.contest, submission._id, status);
+      i++;
+      if (!submission || !submission.problem) {
+        return next();
+      }
+      if (status === 'ERROR' || status === 'PENDING') {
+      //   submission.verdict = -5;
+      //   return submission.save(() => {
+      //     Queue.pushSubmission(submission.problem.oj, submission, next);
+      //   });
+        return next();
+      }
+      return updateScoreboard(submission, next);
+    }, callback);
+  });
+}
+//populateRedis(() => {});
+
 exports.updateSubmission = updateSubmission;
 exports.updateScoreboard = updateScoreboard;
+//55c5d376f5b8d4fe6dddfac6

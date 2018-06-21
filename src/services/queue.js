@@ -30,3 +30,10 @@ SubmissionQueue.watchStuckJobs(60 * 1000);
 SubmissionQueue.setMaxListeners(500);
 
 exports.SubmissionQueue = SubmissionQueue
+
+exports.pushSubmission = (oj, s, callback) => {
+  let job = SubmissionQueue.create(`submission:${oj}`, { id: s._id })
+  job.attempts(7)
+  job.backoff({ delay: 60 * 1000, type: 'exponential' })
+  job.save(callback)
+}
