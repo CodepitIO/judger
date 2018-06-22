@@ -25,11 +25,11 @@ module.exports = (function() {
         progress: progress,
         callback: callback
       };
-    }
+    };
     this.removeSubmissionHandler = (submission) => {
       judgeCount--;
       delete judgeSet[submission.oj_id];
-    }
+    };
 
     this.login = (callback) => {
       async.retry({times: 5, interval: 2000}, this._login, (err) => {
@@ -40,7 +40,7 @@ module.exports = (function() {
         }
         return callback && callback();
       });
-    }
+    };
 
     this.start = () => {
       async.forever(
@@ -70,11 +70,11 @@ module.exports = (function() {
         },
         (err) => {}
       );
-    }
+    };
 
     let sendQueue = async.queue((submission, callback) => {
       if (!submission || !submission.language) {
-        return callback(Errors.InternalError)
+        return callback(Errors.InternalError);
       }
       let language = Config.submitLang[submission.language];
       if (!language) return callback(Errors.InternalError);

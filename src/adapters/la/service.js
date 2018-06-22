@@ -58,7 +58,7 @@ module.exports = ((parentCls) => {
         }
         return callback();
       });
-    };
+    }
 
     this._login = login;
 
@@ -98,11 +98,11 @@ module.exports = ((parentCls) => {
         }
         return callback(null, id);
       });
-    };
+    }
 
     this._send = (submission, callback) => {
       return send(submission, true, callback);
-    }
+    };
 
     function judge(judgeSet, callback) {
       client.get(SUBMISSIONS_PATH, (err, res, html) => {

@@ -66,12 +66,12 @@ module.exports = (function(parentCls) {
         }
         return callback(Errors.SubmissionFail);
       });
-    };
+    }
 
     function send(submission, retry, callback) {
       async.waterfall([
         (next) => {
-          browser.visit(Config.url + SUBMIT_PAGE_PATH, next)
+          browser.visit(Config.url + SUBMIT_PAGE_PATH, next);
         },
         (next) => {
           browser
@@ -96,11 +96,11 @@ module.exports = (function(parentCls) {
         }
         return getSubmissionId(callback);
       });
-    };
+    }
 
     this._send = (submission, callback) => {
       return send(submission, true, callback);
-    }
+    };
 
     function judge(judgeSet, callback) {
       let url = util.format(SUBMISSIONS_API_UNF, AdapterURI.accessKey, 100);
@@ -113,7 +113,7 @@ module.exports = (function(parentCls) {
         }
         return callback();
       });
-    };
+    }
 
     this._judge = judge;
   }

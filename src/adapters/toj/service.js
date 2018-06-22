@@ -32,7 +32,7 @@ module.exports = ((parentCls) => {
 
     function login(callback) {
       return callback();
-    };
+    }
 
     this._login = login;
 
@@ -51,8 +51,8 @@ module.exports = ((parentCls) => {
           return callback(e);
         }
         return callback(null, id);
-      })
-    };
+      });
+    }
 
     function send(submission, retry, callback) {
       let data = {
@@ -77,11 +77,11 @@ module.exports = ((parentCls) => {
         }
         return getSubmissionId(callback);
       });
-    };
+    }
 
     this._send = (submission, callback) => {
       return send(submission, true, callback);
-    }
+    };
 
     function judge(judgeSet, callback) {
       client.get(util.format(SUBMISSIONS_PATH, acct.getUser()), (err, res, html) => {

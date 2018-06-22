@@ -5,7 +5,7 @@ const fs        = require('fs'),
       assert    = require('assert'),
       path      = require('path'),
       util      = require('util'),
-      _         = require('lodash')
+      _         = require('lodash');
 
 const Adapter       = require('../adapter'),
       Errors        = require('../../../common/errors'),
@@ -27,7 +27,7 @@ module.exports = (function(parentCls){
   function AdapterHUXLEY(acct) {
     parentCls.call(this, acct);
     if (!fs.existsSync('/tmp')) {
-      fs.mkdirSync('/tmp')
+      fs.mkdirSync('/tmp');
     }
 
     const client = new RequestClient(Config.url);
@@ -55,7 +55,7 @@ module.exports = (function(parentCls){
         accessToken = data.access_token;
         return callback();
       });
-    };
+    }
 
     this._login = login;
 
@@ -112,11 +112,11 @@ module.exports = (function(parentCls){
         }
         return callback(null, id);
       });
-    };
+    }
 
     this._send = (submission, callback) => {
       return send(submission, true, callback);
-    }
+    };
 
     function judge(judgeSet, callback) {
       let opts = {

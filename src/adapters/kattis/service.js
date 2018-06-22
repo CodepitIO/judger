@@ -61,7 +61,7 @@ module.exports = ((parentCls) => {
         }
         return callback();
       });
-    };
+    }
 
     this._login = login;
 
@@ -124,11 +124,11 @@ module.exports = ((parentCls) => {
         }
         return getSubmissionID(html, callback);
       });
-    };
+    }
 
     this._send = (submission, callback) => {
       return send(submission, true, callback);
-    }
+    };
 
     function judge(judgeSet, callback) {
       let submissions_path = util.format(SUBMISSIONS_PATH, acct.getUser());

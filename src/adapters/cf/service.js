@@ -35,7 +35,7 @@ module.exports = (function(parentCls) {
     function login(callback) {
       async.waterfall([
         (next) => {
-          browser.visit(Config.url + LOGIN_PAGE_PATH, next)
+          browser.visit(Config.url + LOGIN_PAGE_PATH, next);
         },
         (next) => {
           browser
@@ -51,7 +51,7 @@ module.exports = (function(parentCls) {
         }
         return callback(null);
       });
-    };
+    }
 
     this._login = login;
 
@@ -67,7 +67,7 @@ module.exports = (function(parentCls) {
         }
         return callback(null, id);
       });
-    };
+    }
 
     function send(submission, retry, callback) {
       async.waterfall([
@@ -110,11 +110,11 @@ module.exports = (function(parentCls) {
         }
         return getSubmissionId(callback);
       });
-    };
+    }
 
     this._send = (submission, callback) => {
       return send(submission, true, callback);
-    }
+    };
 
     function judge(judgeSet, callback) {
       let submissionsUrl = util.format(SUBMISSIONS_API, acct.getUser(), 30);

@@ -33,7 +33,7 @@ module.exports = ((parentCls) => {
   function AdapterCODECHEF(acct) {
     parentCls.call(this, acct);
     if (!fs.existsSync('/tmp')) {
-      fs.mkdirSync('/tmp')
+      fs.mkdirSync('/tmp');
     }
 
     const client = new RequestClient(Config.url);
@@ -61,38 +61,37 @@ module.exports = ((parentCls) => {
       ], (err, res, html) => {
         html = html || '';
         if (!!html.match(LIMIT_CON_PATTERN)) {
-          return handleSessionLimit(html, callback)
+          return handleSessionLimit(html, callback);
         }
         if (!html.match(LOGGED_PATTERN)) {
-          return callback(Errors.LoginFail)
+          return callback(Errors.LoginFail);
         }
-        return callback()
+        return callback();
       });
-    };
+    }
 
     function handleSessionLimit(html, callback) {
       var i = 0;
       async.forever((next) => {
         i++;
-        let $ = cheerio.load(html)
-        require('fs').writeFileSync('lol' + i + '.html', html);
-        let sid = $('#session-limit-page .form-checkboxes .form-item input:not(:contains("current"))').first().val()
-        if (!sid) return callback()
+        let $ = cheerio.load(html);
+        let sid = $('#session-limit-page .form-checkboxes .form-item input:not(:contains("current"))').first().val();
+        if (!sid) return callback();
         let f = Utils.parseForm(SESSION_LIMIT_FORM_PATTERN, html);
-        if (!f) return callback(Errors.LoginFail)
+        if (!f) return callback(Errors.LoginFail);
         let opts = {
           followAllRedirects: true,
           headers: { Referer: Config.url, },
         };
         f.data[`sid[${sid}]`] = sid;
         client.post(SESSION_LIMIT, f.data, opts, (err, res, _html) => {
-          html = _html
-          if (err || !html) return callback()
-          return next()
-        })
+          html = _html;
+          if (err || !html) return callback();
+          return next();
+        });
       }, (err) => {
-        return callback(err)
-      })
+        return callback(err);
+      });
     }
 
     this._login = login;
@@ -151,11 +150,11 @@ module.exports = ((parentCls) => {
         }
         return callback(null, id);
       });
-    };
+    }
 
     this._send = (submission, callback) => {
       return send(submission, true, callback);
-    }
+    };
 
     function judge(judgeSet, callback) {
       let userSubmissionsPath = util.format(

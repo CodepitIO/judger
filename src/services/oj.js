@@ -74,7 +74,7 @@ module.exports = (function() {
       for (let i in adapters) {
         adapters[i].login();
       }
-    }
+    };
 
     this.start = () => {
       if (adapters.length > 0) {
@@ -87,12 +87,12 @@ module.exports = (function() {
           handleSubmission
         );
       }
-    }
+    };
 
     this.addAccount = (acct) => {
       let newAdapter = Adapter.create(acct);
       if (newAdapter) adapters.push(newAdapter);
-    }
+    };
   }
 
   return OnlineJudge;

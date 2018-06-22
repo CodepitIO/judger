@@ -1,10 +1,10 @@
 'use strict';
 
-const kue   = require('kue')
+const kue   = require('kue');
 
 const JUDGE     = require('../../common/constants').JUDGE,
       Dbs     = require('./dbs'),
-      Publisher = require('./publisher')
+      Publisher = require('./publisher');
 
 // --- SUBMISSION QUEUE ---
 
@@ -29,11 +29,11 @@ SubmissionQueue.watchStuckJobs(60 * 1000);
 
 SubmissionQueue.setMaxListeners(500);
 
-exports.SubmissionQueue = SubmissionQueue
+exports.SubmissionQueue = SubmissionQueue;
 
 exports.pushSubmission = (oj, s, callback) => {
-  let job = SubmissionQueue.create(`submission:${oj}`, { id: s._id })
-  job.attempts(7)
-  job.backoff({ delay: 60 * 1000, type: 'exponential' })
-  job.save(callback)
-}
+  let job = SubmissionQueue.create(`submission:${oj}`, { id: s._id });
+  job.attempts(7);
+  job.backoff({ delay: 60 * 1000, type: 'exponential' });
+  job.save(callback);
+};

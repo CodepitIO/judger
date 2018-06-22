@@ -7,7 +7,7 @@ const path      = require('path'),
       cheerio   = require('cheerio'),
       util      = require('util'),
       fs        = require('fs'),
-      _         = require('lodash')
+      _         = require('lodash');
 
 const Adapter       = require('../adapter'),
       Errors        = require('../../../common/errors'),
@@ -53,7 +53,7 @@ module.exports = (function(parentCls) {
         }
         return callback();
       });
-    };
+    }
 
     this._login = login;
 
@@ -67,7 +67,7 @@ module.exports = (function(parentCls) {
         return callback(e);
       }
       return callback(null, id);
-    };
+    }
 
     function send(submission, retry, callback) {
       async.waterfall([
@@ -102,11 +102,11 @@ module.exports = (function(parentCls) {
           return getSubmissionId(callback);
         }
       });
-    };
+    }
 
     this._send = (submission, callback) => {
       return send(submission, true, callback);
-    }
+    };
 
     function judge(judgeSet, callback) {
       client.get(STATUS_PATH + '/' + acct.getUser(), (err, res, html) => {
@@ -120,7 +120,7 @@ module.exports = (function(parentCls) {
         }
         return callback();
       });
-    };
+    }
 
     this._judge = judge;
   }

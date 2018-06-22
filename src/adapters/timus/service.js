@@ -83,7 +83,7 @@ module.exports = (function(parentCls){
         }
         return getSubmissionID(callback);
       });
-    };
+    }
 
     this._send = send;
 

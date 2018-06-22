@@ -47,7 +47,7 @@ module.exports = (() => {
     ], () => {
       return callback && callback();
     });
-  }
+  };
 
   return this;
 })();
