@@ -85,7 +85,7 @@ module.exports = (function(parentCls) {
         request(url, {json: true, headers:{
           'content-type': 'application/json',
           'accept': 'application/json',
-          'authorization': 'Bearer ' + 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjE3LCJleHAiOjE1NDE2MTA0OTF9.WLDOhv3IWGv0Bj7tb_EDQk8WMWd0w0GRbtVNagKd17o',
+          'authorization': 'Bearer ' + acct.getAccessKey(),
         }
         }, (err, res, data) => {
           if (err) return callback(err);
@@ -134,7 +134,7 @@ module.exports = (function(parentCls) {
       request(url, {json: true, headers:{
         'content-type': 'application/json',
         'accept': 'application/json',
-        'authorization': 'Bearer ' + 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjE3LCJleHAiOjE1NDE2MTA0OTF9.WLDOhv3IWGv0Bj7tb_EDQk8WMWd0w0GRbtVNagKd17o',
+        'authorization': 'Bearer ' + acct.getAccessKey(),
       }
       }, (err, res, data) => {
         if (err) return callback(err);
