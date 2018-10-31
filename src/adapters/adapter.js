@@ -51,7 +51,9 @@ module.exports = (function() {
               let verdict = judgeSet[id].verdict;
               let submission = judgeSet[id].submission;
               verdict = Utils.getVerdict(acct.getType(), verdict);
+              console.log(submission)
               if (verdict) {
+                console.log(id)
                 if (submission.verdict !== verdict && verdict !== SubmissionStatus.SUBMISSION_ERROR) {
                   submission.verdict = verdict;
                   judgeSet[id].progress({verdict: verdict});

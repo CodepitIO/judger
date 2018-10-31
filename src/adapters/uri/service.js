@@ -6,6 +6,7 @@ const path    = require('path'),
       Browser = require('zombie'),
       util    = require('util'),
       cheerio = require('cheerio'),
+      request = require('request'),
       _       = require('lodash');
 
 const Adapter       = require('../adapter'),
@@ -16,11 +17,10 @@ const Adapter       = require('../adapter'),
 const TYPE = path.basename(__dirname);
 const Config = Utils.getOJConfig(TYPE);
 
-const LOGIN_PAGE_PATH       = "/judge/pt/login",
-      SUBMIT_PAGE_PATH      = "/judge/pt/runs/add",
-      SUBMISSIONS_API_UNF   = "/judge/maratonando/%s/runs/%s";
+const LOGIN_PAGE_PATH       = "/judge/en/login",
+      SUBMIT_PAGE_PATH      = "/judge/en/runs/add";
 
-const LOGIN_TEST_REGEX = /Perfil/i;
+const LOGIN_TEST_REGEX = /\/judge\/en\//i;
 
 module.exports = (function(parentCls) {
 
@@ -42,7 +42,7 @@ module.exports = (function(parentCls) {
             .fill('#email', acct.getUser())
             .fill('#password', acct.getPass())
             .check('#remember-me')
-            .pressButton('input.send-green', next);
+            .pressButton('input.send-green.send-right', next);
         }
       ], (err) => {
         let html = browser.html() || '';
@@ -55,17 +55,43 @@ module.exports = (function(parentCls) {
 
     this._login = login;
 
-    function getSubmissionId(callback) {
-      let url = util.format(SUBMISSIONS_API_UNF, AdapterURI.accessKey, 10);
-      client.get(url, {json: true}, (err, res, data) => {
-        if (err || !_.isArray(data)) return callback(err);
-        for (let i = 0; i < data.length; i++) {
-          if (data[i].UserID.toString() === acct.getId()) {
-            return callback(null, data[i].SubmissionID.toString());
-          }
+    function getSubmissionId(submission, callback, data, index) {
+      if (data !== undefined) {
+        console.log('getSubmissionId data call')
+        console.log(data)
+        if (index < data.length) {
+          let sub_id = data[index].id
+          async.waterfall([
+            (next) => {
+              console.log(sub_id)
+              browser.visit('https://www.urionlinejudge.com.br/judge/en/runs/code/' + sub_id, next)
+            },
+            (next) => {
+              console.log({'data': submission.code})
+              console.log({'data': browser.query('pre')._childNodes[0]._data})
+              if(browser.query('pre')._childNodes[0]._data == submission.code){
+                return callback(null, sub_id)
+              } else {
+                return getSubmissionId(submission, callback, data, index + 1)
+              }
+            }
+          ])
+        } else {
+          return callback('ERRO')
         }
-        return callback(Errors.SubmissionFail);
-      });
+      } else {
+        console.log('getSubmissionId call')
+        let url = 'https://api.urionlinejudge.com.br/users/submissions/' + acct.getId() + '?sort=created&direction=desc';
+        request(url, {json: true, headers:{
+          'content-type': 'application/json',
+          'accept': 'application/json',
+          'authorization': 'Bearer ' + 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjE3LCJleHAiOjE1NDE2MTA0OTF9.WLDOhv3IWGv0Bj7tb_EDQk8WMWd0w0GRbtVNagKd17o',
+        }
+        }, (err, res, data) => {
+          if (err) return callback(err);
+          return getSubmissionId(submission, callback, data.runs, 0)
+        })
+      }
     }
 
     function send(submission, retry, callback) {
@@ -94,7 +120,7 @@ module.exports = (function(parentCls) {
             });
           }
         }
-        return getSubmissionId(callback);
+        return getSubmissionId(submission, callback);
       });
     }
 
@@ -103,16 +129,22 @@ module.exports = (function(parentCls) {
     };
 
     function judge(judgeSet, callback) {
-      let url = util.format(SUBMISSIONS_API_UNF, AdapterURI.accessKey, 100);
-      client.get(url, {json: true}, (err, res, data) => {
+      console.log(judgeSet)
+      let url = 'https://api.urionlinejudge.com.br/users/submissions/' + acct.getId() + '?sort=created&direction=desc';
+      request(url, {json: true, headers:{
+        'content-type': 'application/json',
+        'accept': 'application/json',
+        'authorization': 'Bearer ' + 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjE3LCJleHAiOjE1NDE2MTA0OTF9.WLDOhv3IWGv0Bj7tb_EDQk8WMWd0w0GRbtVNagKd17o',
+      }
+      }, (err, res, data) => {
         if (err) return callback(err);
-        for (let i = 0; i < data.length; i++) {
-          if (judgeSet[data[i].SubmissionID]) {
-            judgeSet[data[i].SubmissionID].verdict = data[i].Verdict;
+        for(let run of data.runs) {
+          if(judgeSet[run.id]){
+            judgeSet[run.id].verdict = run.answer
           }
         }
-        return callback();
-      });
+        return callback()
+      })
     }
 
     this._judge = judge;
