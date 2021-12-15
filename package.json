@@ -13,7 +13,6 @@
   "main": "main",
   "dependencies": {
     "async": "^2.6.1",
-    "bcrypt": "^2.0.1",
     "bluebird": "^3.5.1",
     "cheerio": "^1.0.0-rc.2",
     "extend": "^3.0.1",
@@ -22,7 +21,6 @@
     "lodash": "^4.17.10",
     "mongoose": "^5.1.6",
     "redis": "^2.8.0",
-    "request": "^2.87.0",
-    "zombie": "git+https://git@github.com/godely/zombie.git"
+    "request": "^2.87.0"
   }
 }

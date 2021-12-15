@@ -21,8 +21,9 @@ module.exports = (() => {
   }
 
   function loadJudgersAccounts(callback) {
-    OjAccount.find().exec((err, accts) => {
+    OjAccount.find().exec((_, accts) => {
       for (var i = 0; i < accts.length; i++) {
+        if (accts[i].type.match("^cf.*") || accts[i].type == "uri" || accts[i].type.match("^spoj.*")) continue;
         if (!ojs[accts[i].type]) {
           ojs[accts[i].type] = new OnlineJudge(accts[i].type);
         }

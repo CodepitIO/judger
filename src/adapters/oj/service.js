@@ -3,10 +3,7 @@
 const cheerio = require('cheerio'),
       assert  = require('assert'),
       async   = require('async'),
-      path    = require('path'),
-      util    = require('util'),
-      iconv   = require('iconv-lite'),
-      _       = require('lodash');
+      path    = require('path');
 
 const Adapter       = require('../adapter'),
       Errors        = require('../../../common/errors'),
@@ -26,7 +23,7 @@ const LOGGED_PATTERN          = /My\s+Account/i,
 
 module.exports = ((parentCls) => {
 
-  function AdapterUVA(acct) {
+  function AdapterOJ(acct) {
     parentCls.call(this, acct);
 
     const client = new RequestClient(Config.url);
@@ -131,5 +128,5 @@ module.exports = ((parentCls) => {
     this._judge = judge;
   }
 
-  return AdapterUVA;
+  return AdapterOJ;
 })(Adapter);
