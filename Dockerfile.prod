@@ -1,31 +1,32 @@
-# Set the base image to Ubuntu
-FROM    ubuntu:14.04
+FROM alpine:3.15
 
 # File Author / Maintainer
-MAINTAINER Gustavo Stor
+LABEL org.opencontainers.image.authors="Gustavo Stor"
 
-# Install Node.js and other dependencies
-RUN apt-get update && \
-    apt-get -y install curl && \
-    curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash - && \
-    apt-get -y install nodejs git-all build-essential vim supervisor
-RUN mkdir -p /var/log/supervisor
+RUN apk add --no-cache \
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont \
+    nodejs \
+    npm \
+    yarn
 
-RUN npm install -g grunt-cli nodemon
-
-ENV WD judger
-
-# Install node_modules and bower_components
-COPY package.json /tmp/package.json
-RUN cd /tmp && npm install
+RUN apk add curl g++ make vim
 
 # Define working directory
-RUN mkdir -p /${WD}
-WORKDIR /${WD}
-ADD . /${WD}
+RUN mkdir -p /judger
+WORKDIR /judger
+COPY ../../package.json /judger/
 
-RUN cp -a /tmp/node_modules /${WD}/ && rm -rf /tmp
+# Install node_modules
+RUN mkdir -p /tmp
+COPY package.json /tmp/package.json
+RUN cd /tmp && npm install && cp -a /tmp/node_modules /judger/ && rm -rf /tmp/
 
-COPY .prod/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
-CMD ["/usr/bin/supervisord"]
+CMD node main.js
