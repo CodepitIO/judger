@@ -19,7 +19,7 @@ RUN apk add curl g++ make vim
 # Define working directory
 RUN mkdir -p /judger
 WORKDIR /judger
-COPY ../../package.json /judger/
+ADD . /judger
 
 # Install node_modules
 RUN mkdir -p /tmp

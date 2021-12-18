@@ -4,9 +4,6 @@ node_modules/
 
 ### *nix OS / apps
 
-*.log
-*.swp
-*~
 __MACOSX
 *.DS_Store
 *.DS_Store?
@@ -16,4 +13,25 @@ __MACOSX
 ehthumbs.db
 thumbs.db
 Thumbs.db
+*.seed
+*.log
+*.csv
+*.dat
+*.out
+*.pid
+*.gz
+*.DS_Store
+*.swp
+*.txt
+*.tex
+*~
 *.md5
+
+lib-cov
+.tmp
+nohup.out
+
+npm-debug.log
+node_modules/
+yarn.lock
+package-lock.json
