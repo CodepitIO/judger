@@ -1,4 +1,4 @@
-FROM alpine:3.15
+FROM alpine:3
 
 # File Author / Maintainer
 LABEL org.opencontainers.image.authors="Gustavo Stor"
@@ -16,16 +16,17 @@ RUN apk add --no-cache \
 
 RUN apk add curl g++ make vim
 
+ENV WD judger
+
 # Define working directory
 RUN mkdir -p /judger
 WORKDIR /judger
 ADD . /judger
 
-# Install node_modules
-RUN mkdir -p /tmp
-COPY package.json /tmp/package.json
-RUN cd /tmp && npm install && cp -a /tmp/node_modules /judger/ && rm -rf /tmp/
+# Install npm dependencies from strach and throw that away after copying the resolved node_modules here.
+RUN mkdir -p /tmp && cp package.json /tmp/ && cd /tmp && npm install && cp -a /tmp/node_modules /${WD}/ && rm -rf /tmp
 
+# Puppeteer settings
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 

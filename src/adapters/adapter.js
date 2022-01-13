@@ -1,15 +1,15 @@
-'use strict';
+"use strict";
 
-const fs    = require('fs'),
-      path  = require('path'),
-      async = require('async');
+const fs = require("fs"),
+  path = require("path"),
+  async = require("async");
 
-const Errors  = require('../../common/errors'),
-      Utils   = require('../../common/lib/utils');
+const Errors = require("../../common/errors"),
+  Utils = require("../../common/lib/utils");
 
-const SubmissionStatus  = require('../../common/constants').JUDGE.STATUS;
+const SubmissionStatus = require("../../common/constants").JUDGE.STATUS;
 
-module.exports = (function() {
+module.exports = (function () {
   // constructor
   function Adapter(acct) {
     const Config = Utils.getOJConfig(acct.getType());
@@ -23,7 +23,7 @@ module.exports = (function() {
       judgeSet[submission.oj_id] = {
         submission: submission,
         progress: progress,
-        callback: callback
+        callback: callback,
       };
     };
     this.removeSubmissionHandler = (submission) => {
@@ -32,11 +32,15 @@ module.exports = (function() {
     };
 
     this.login = (callback) => {
-      async.retry({times: 5, interval: 2000}, this._login, (err) => {
+      async.retry({ times: 5, interval: 2000 }, this._login, (err) => {
         if (err) {
-          console.log(`Unable to log to ${acct.getType()} with account ${acct.getUser()}.`);
+          console.log(
+            `Unable to log to ${acct.getType()} with account ${acct.getUser()}.`
+          );
         } else {
-          console.log(`Logged in on ${acct.getType()} with account ${acct.getUser()}.`);
+          console.log(
+            `Logged in on ${acct.getType()} with account ${acct.getUser()}.`
+          );
         }
         return callback && callback();
       });
@@ -48,13 +52,18 @@ module.exports = (function() {
           if (judgeCount === 0) return setTimeout(next, 1000);
           this._judge(judgeSet, () => {
             for (let id in judgeSet) {
-              let verdict = judgeSet[id].verdict;
               let submission = judgeSet[id].submission;
-              verdict = Utils.getVerdict(acct.getType(), verdict);
+              let verdict = Utils.getVerdict(
+                acct.getType(),
+                judgeSet[id].verdict
+              );
               if (verdict) {
-                if (submission.verdict !== verdict && verdict !== SubmissionStatus.SUBMISSION_ERROR) {
+                if (
+                  submission.verdict !== verdict &&
+                  verdict !== SubmissionStatus.SUBMISSION_ERROR
+                ) {
                   submission.verdict = verdict;
-                  judgeSet[id].progress({verdict: verdict});
+                  judgeSet[id].progress({ verdict: verdict });
                 }
                 if (verdict > 0) {
                   let err = null;
@@ -86,7 +95,7 @@ module.exports = (function() {
         problemId: submission.problem.sid || submission.problem.id,
       };
       let interval = Config.intervalPerAdapter || 0;
-      let currentTime = (new Date()).getTime();
+      let currentTime = new Date().getTime();
       let waitTime = Math.max(0, interval - (currentTime - lastSubmission));
       lastSubmission = currentTime + waitTime;
       setTimeout(() => {

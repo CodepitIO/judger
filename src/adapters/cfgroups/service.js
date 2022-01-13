@@ -1,55 +1,61 @@
-'use strict';
+"use strict";
 
-const path    = require('path'),
-      async   = require('async'),
-      Browser = require('zombie'),
-      assert  = require('assert'),
-      cheerio = require('cheerio'),
-      util    = require('util'),
-      _       = require('lodash');
+const path = require("path"),
+  async = require("async"),
+  Browser = require("zombie"),
+  assert = require("assert"),
+  cheerio = require("cheerio"),
+  util = require("util"),
+  _ = require("lodash");
 
-const Adapter       = require('../adapter'),
-      Errors        = require('../../../common/errors'),
-      RequestClient = require('../../../common/lib/requestClient'),
-      Utils          = require('../../../common/lib/utils');
+const Adapter = require("../adapter"),
+  Errors = require("../../../common/errors"),
+  RequestClient = require("../../../common/lib/requestClient"),
+  Utils = require("../../../common/lib/utils");
 
 const TYPE = path.basename(__dirname);
 const Config = Utils.getOJConfig(TYPE);
 
-const LOGIN_PAGE_PATH         = "/enter",
-      GROUP_SUBMIT_PAGE_PATH  = "/group/%s/contest/%s/submit",
-      SUBMISSIONS_API         = "/group/%s/status?showUnofficial=on";
+const LOGIN_PAGE_PATH = "/enter",
+  GROUP_SUBMIT_PAGE_PATH = "/group/%s/contest/%s/submit",
+  SUBMISSIONS_API = "/group/%s/status?showUnofficial=on";
 
-const LOGIN_TEST_REGEX      = /logout/i,
-      LLD_REGEX             = /preferred\s+to\s+use\s+cin/i;
+const LOGIN_TEST_REGEX = /logout/i,
+  LLD_REGEX = /preferred\s+to\s+use\s+cin/i;
 
-module.exports = (function(parentCls) {
-
+module.exports = (function (parentCls) {
   function AdapterCFGroups(acct) {
     parentCls.call(this, acct);
 
-    let browser = new Browser({runScripts: true, strictSSL: false, waitDuration: 100000});
+    let browser = new Browser({
+      runScripts: true,
+      strictSSL: false,
+      waitDuration: 100000,
+    });
     let client = new RequestClient(Config.url);
 
     function login(callback) {
-      async.waterfall([
-        (next) => {
-          browser.visit(Config.url + LOGIN_PAGE_PATH, next);
-        },
-        (next) => {
-          browser
-            .fill('#handleOrEmail', acct.getUser())
-            .fill('#password', acct.getPass())
-            .check('#remember')
-            .pressButton('input[value="Login"]', next);
+      async.waterfall(
+        [
+          (next) => {
+            browser.visit(Config.url + LOGIN_PAGE_PATH, next);
+          },
+          (next) => {
+            browser
+              .fill("#handleOrEmail", acct.getUser())
+              .then(() => browser.fill("#password", acct.getPass()))
+              .then(() => browser.check("#remember"))
+              .then(() => browser.pressButton('input[value="Login"]', next));
+          },
+        ],
+        (err) => {
+          let html = browser.html() || "";
+          if (!html.match(LOGIN_TEST_REGEX)) {
+            return login(callback);
+          }
+          return callback(null);
         }
-      ], (err) => {
-        let html = browser.html() || '';
-        if (!html.match(LOGIN_TEST_REGEX)) {
-          return login(callback);
-        }
-        return callback(null);
-      });
+      );
     }
 
     this._login = login;
@@ -61,7 +67,11 @@ module.exports = (function(parentCls) {
         try {
           let $ = cheerio.load(html);
           id = _.trim(
-            $(`td[data-participantid="${acct.getId()}"]`).first().prev().prev().text()
+            $(`td[data-participantid="${acct.getId()}"]`)
+              .first()
+              .prev()
+              .prev()
+              .text()
           );
           assert(id && id.length >= 6);
         } catch (e) {
@@ -72,51 +82,65 @@ module.exports = (function(parentCls) {
     }
 
     function send(submission, retry, callback) {
-      let split = _.split(submission.problemId, '/');
+      let split = _.split(submission.problemId, "/");
       let groupId = split[0];
       let contestId = split[1];
       let problemId = split[2];
-      let submitPagePath = util.format(GROUP_SUBMIT_PAGE_PATH, groupId, contestId);
-      async.waterfall([
-        (next) => {
-          browser.visit(Config.url + submitPagePath, next);
-        },
-        (next) => {
-          if (browser.location.pathname === LOGIN_PAGE_PATH) {
-            return next(Errors.LoginFail);
+      let submitPagePath = util.format(
+        GROUP_SUBMIT_PAGE_PATH,
+        groupId,
+        contestId
+      );
+      async.waterfall(
+        [
+          (next) => {
+            browser.visit(Config.url + submitPagePath, next);
+          },
+          (next) => {
+            try {
+              browser
+                .fill('input[name="submittedProblemCode"]', problemId)
+                .then(() =>
+                  browser.select('select[name="programTypeId"]', sub.language)
+                )
+                .then(() => browser.fill("#sourceCodeTextarea", sub.code))
+                .then(() => {
+                  require("fs").writeFileSync("test.html", browser.html());
+                  browser.pressButton('input[value="Submit"]', next);
+                });
+            } catch (err) {
+              return next(Errors.LoginFail);
+            }
+          },
+          (next) => {
+            let html = browser.html() || "";
+            if (html.match(LLD_REGEX)) {
+              return browser
+                .check('input[name="doNotShowWarningAgain"]')
+                .pressButton('input[value="Submit"]', next);
+            }
+            return next();
+          },
+        ],
+        (err) => {
+          if (err && !retry) {
+            return callback(err);
+          } else if (browser.html().match(/should\s+satisfy\s+regex/i)) {
+            return callback(Errors.UnretriableError);
+          } else if (browser.location.pathname !== STATUS_PATH) {
+            if (!retry) {
+              return callback(Errors.SubmissionFail);
+            } else {
+              browser = new Browser({ runScripts: false });
+              return login((err) => {
+                if (err) return callback(err);
+                return send(sub, false, callback);
+              });
+            }
           }
-          browser
-            .select('select[name="submittedProblemIndex"]', problemId)
-            .select('select[name="programTypeId"]', submission.language)
-            .fill('#sourceCodeTextarea', submission.code)
-            .pressButton('input[value="Submit"]', next);
-        },
-        (next) => {
-          let html = browser.html() || '';
-          if (html.match(LLD_REGEX)) {
-            return browser.check('input[name="doNotShowWarningAgain"]')
-              .pressButton('input[value="Submit"]', next);
-          }
-          return next();
+          return getSubmissionId(callback);
         }
-      ], (err) => {
-        if (err && !retry) {
-          return callback(err);
-        } else if (browser.html().match(/should\s+satisfy\s+regex/i)) {
-          return callback(Errors.UnretriableError);
-        } else if (!browser.location.pathname.match(/\/my$/)) {
-          if (!retry) {
-            return callback(Errors.SubmissionFail);
-          } else {
-            browser = new Browser({runScripts: false});
-            return login((err) => {
-              if (err) return callback(err);
-              return send(submission, false, callback);
-            });
-          }
-        }
-        return getSubmissionId(groupId, callback);
-      });
+      );
     }
 
     this._send = (submission, callback) => {
@@ -127,23 +151,29 @@ module.exports = (function(parentCls) {
       let groups = _.chain(judgeSet)
         .values()
         .groupBy((o) => {
-          return _.split(o.submission.problem.sid, '/')[0];
+          return _.split(o.submission.problem.sid, "/")[0];
         })
         .value();
-      async.eachOf(groups, (gJudgeSet, groupId, next) => {
-        let submissionsUrl = util.format(SUBMISSIONS_API, groupId);
-        client.get(submissionsUrl, (err, res, html) => {
-          let $ = cheerio.load(html);
-          _.forEach(gJudgeSet, (o) => {
-            try {
-              let id = o.submission.oj_id;
-              let verdict = $(`span[submissionid="${id}"]`).attr('submissionverdict');
-              judgeSet[id].verdict = verdict;
-            } catch (e) {}
+      async.eachOf(
+        groups,
+        (gJudgeSet, groupId, next) => {
+          let submissionsUrl = util.format(SUBMISSIONS_API, groupId);
+          client.get(submissionsUrl, (err, res, html) => {
+            let $ = cheerio.load(html);
+            _.forEach(gJudgeSet, (o) => {
+              try {
+                let id = o.submission.oj_id;
+                let verdict = $(`span[submissionid="${id}"]`).attr(
+                  "submissionverdict"
+                );
+                judgeSet[id].verdict = verdict;
+              } catch (e) {}
+            });
+            return next();
           });
-          return next();
-        });
-      }, callback);
+        },
+        callback
+      );
     }
 
     this._judge = judge;

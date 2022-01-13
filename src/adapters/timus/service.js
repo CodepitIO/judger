@@ -1,33 +1,34 @@
-'use strict';
+"use strict";
 
-const cheerio = require('cheerio'),
-      assert  = require('assert'),
-      async   = require('async'),
-      path    = require('path'),
-      util    = require('util');
+const cheerio = require("cheerio"),
+  assert = require("assert"),
+  async = require("async"),
+  path = require("path"),
+  util = require("util"),
+  Browser = require("zombie");
 
-const Adapter       = require('../adapter'),
-      Errors        = require('../../../common/errors'),
-      RequestClient = require('../../../common/lib/requestClient'),
-      Utils         = require('../../../common/lib/utils');
+const Adapter = require("../adapter"),
+  Errors = require("../../../common/errors"),
+  RequestClient = require("../../../common/lib/requestClient"),
+  Utils = require("../../../common/lib/utils");
 
 const TYPE = path.basename(__dirname);
 const Config = Utils.getOJConfig(TYPE);
 
 const SUBMIT_PAGE_PATH = "/submit.aspx",
-      SUBMIT_PATH      = "/submit.aspx?space=1",
-      AUTHOR_UNF_PATH  = "/status.aspx?space=1&count=50&author=%s";
+  STATUS_PATH = "/status.aspx",
+  AUTHOR_UNF_PATH = "/status.aspx?space=1&count=50&author=%s";
 
 const SUBMIT_FORM_PATTERN = /<form([^>]+?)>((?:.|\n)*?)<\/form>/i,
-      INPUT_PATTERN       = /<input([^>]+?)\/?>/gi,
-      INVALID_ACC_PATTERN = /Invalid\s+JUDGE_ID/i,
-      FAST_SUB_PATTERN    = /between\s+submissions/i;
+  INPUT_PATTERN = /<input([^>]+?)\/?>/gi,
+  INVALID_ACC_PATTERN = /Invalid\s+JUDGE_ID/i,
+  FAST_SUB_PATTERN = /between\s+submissions/i;
 
-module.exports = (function(parentCls){
-
+module.exports = (function (parentCls) {
   function AdapterTIMUS(acct) {
     parentCls.call(this, acct);
 
+    const browser = new Browser({ runScripts: false, strictSSL: false });
     const client = new RequestClient(Config.url);
 
     const AUTHOR_PATH = util.format(AUTHOR_UNF_PATH, acct.getUser());
@@ -46,7 +47,7 @@ module.exports = (function(parentCls){
         let id;
         try {
           let $ = cheerio.load(html);
-          id = $('.id a').html();
+          id = $(".id a").html();
           assert(id && id.length >= 6);
         } catch (e) {
           return callback(Errors.SubmissionFail);
@@ -56,33 +57,42 @@ module.exports = (function(parentCls){
     }
 
     function send(submission, callback) {
-      let data = {
-        Action: 'submit',
-        SpaceID: '1',
-        JudgeID: acct.getPass(),
-        Language: submission.language,
-        ProblemNum: submission.problemId,
-        Source: submission.code,
-        SourceFile: ''
-      };
-      let opts = {
-        followAllRedirects: false,
-        headers: {
-          Referer: Config.url + SUBMIT_PAGE_PATH,
-        },
-      };
-      client.postMultipart(SUBMIT_PATH, data, opts, (err, res, html) => {
-        if (err) {
-          return callback(err);
+      async.waterfall(
+        [
+          (next) => {
+            browser.visit(Config.url + SUBMIT_PAGE_PATH, next);
+          },
+          (next) => {
+            try {
+              browser.fill("input[name='JudgeID']", acct.getPass());
+              browser.fill("input[name='ProblemNum']", submission.problemId);
+              browser.fill("textarea[name='Source']", submission.code);
+              browser.select("select[name='Language']", submission.language);
+              browser.pressButton("input[value='Submit']", next);
+            } catch (err) {
+              return next(err);
+            }
+          },
+        ],
+        (err) => {
+          let html = browser.html() || "";
+          if (err) {
+            return callback(err);
+          }
+          if (html.match(INVALID_ACC_PATTERN)) {
+            return callback(Errors.LoginFail);
+          }
+          console.log(browser.location.pathname, STATUS_PATH);
+          if (
+            html.match(FAST_SUB_PATTERN) ||
+            browser.location.pathname !== STATUS_PATH
+          ) {
+            return callback(Errors.SubmissionFail);
+          }
+          console.log("Aqui!");
+          return getSubmissionID(callback);
         }
-        if (html.match(INVALID_ACC_PATTERN)) {
-          return callback(Errors.LoginFail);
-        }
-        if (html.match(FAST_SUB_PATTERN)) {
-          return callback(Errors.SubmissionFail);
-        }
-        return getSubmissionID(callback);
-      });
+      );
     }
 
     this._send = send;
@@ -98,13 +108,13 @@ module.exports = (function(parentCls){
           try {
             data = $('a:contains("' + id + '")');
             data = data.parent().nextAll().eq(4);
-            if (!data.find('a').html()) {
+            if (!data.find("a").html()) {
               data = data.html();
             } else {
-              data = data.find('a').html();
+              data = data.find("a").html();
             }
             judgeSet[id].verdict = data;
-          } catch(e) {}
+          } catch (e) {}
         }
         return callback();
       });

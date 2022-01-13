@@ -1,11 +1,11 @@
-'use strict';
+"use strict";
 
-const async       = require('async'),
-      kue         = require('kue');
+const async = require("async"),
+  kue = require("kue");
 
-const OjAccount       = require('../../common/models/oj_account'),
-      OnlineJudge     = require('./oj'),
-      SubmissionQueue = require('./queue').SubmissionQueue;
+const OjAccount = require("../../common/models/oj_account"),
+  OnlineJudge = require("./oj"),
+  SubmissionQueue = require("./queue").SubmissionQueue;
 
 module.exports = (() => {
   let ojs = {};
@@ -23,7 +23,6 @@ module.exports = (() => {
   function loadJudgersAccounts(callback) {
     OjAccount.find().exec((_, accts) => {
       for (var i = 0; i < accts.length; i++) {
-        if (accts[i].type.match("^cf.*") || accts[i].type == "uri" || accts[i].type.match("^spoj.*")) continue;
         if (!ojs[accts[i].type]) {
           ojs[accts[i].type] = new OnlineJudge(accts[i].type);
         }
@@ -42,10 +41,7 @@ module.exports = (() => {
 
   this.start = (callback) => {
     reloadActiveTasks();
-    async.series([
-      loadJudgersAccounts,
-      startJudgers,
-    ], () => {
+    async.series([loadJudgersAccounts, startJudgers], () => {
       return callback && callback();
     });
   };
