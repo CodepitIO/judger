@@ -67,7 +67,7 @@ module.exports = ((parentCls) => {
         (err) => {
           let html = browser.html() || "";
           if (!html.match(LOGGED_PATTERN)) {
-            return login(callback);
+            return callback(Errors.LoginFail);
           }
           return callback(null);
         }

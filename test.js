@@ -1,6 +1,9 @@
 const puppeteer = require("puppeteer");
 const async = require("async");
 const util = require("util");
+const path = require("path");
+const fs = require("fs");
+import { readFile } from "fs/promises";
 const Browser = require("zombie");
 
 const Utils = require("./common/lib/utils");
@@ -20,6 +23,9 @@ const Config = {
 
 const client = new RequestClient(Config.url);
 
+const LOGIN_PATH = path.join(__dirname, "login.html"),
+  SUBMIT_PATH = path.join(__dirname, "submit.html");
+
 function getBrowser() {
   return puppeteer.launch({
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
@@ -27,26 +33,33 @@ function getBrowser() {
 }
 
 async function login() {
-  if (!browser) browser = await getBrowser();
-  const page = await browser.newPage();
-  await page.goto("https://codeforces.com/enter");
-  try {
-    await page.type("#handleOrEmail", "godely");
-    await page.type("#password", "920721");
-    await page.click("#remember");
-    await Promise.all([
-      page.click('input[value="Login"]'),
-      page.waitForNavigation(),
-    ]);
-  } catch (err) {}
-  let html = (await page.content()) || "";
-  return new Promise((res, rej) => {
-    if (!html.match(/logout/i)) {
-      return rej(new Error("Error!"));
-    }
-    return res(null);
-  });
+  const file = await readFile(LOGIN_PATH);
+  console.log(file);
+  // if (!browser) browser = await getBrowser();
+  // const page = await browser.newPage();
+  // await page.goto("https://www.codechef.com/login");
+  // try {
+  //   await page.type("#edit-name", "godely");
+  //   await page.type("#edit-pass", "920721");
+  //   await Promise.all([
+  //     page.click('input[value="Login"]'),
+  //     page.waitForNavigation(),
+  //   ]);
+  // } catch (err) {
+  //   await page.pdf({ path: "test.pdf" });
+  // }
+  // let html = (await page.content()) || "";
+  // return new Promise((res, rej) => {
+  //   if (!html.match(/logout/i)) {
+  //     return rej(new Error("Error!"));
+  //   }
+  //   return res(null);
+  // });
 }
+
+(async () => {
+  await login();
+})();
 
 function getSubmissionId(callback) {
   let submissionsUrl = util.format(SUBMISSIONS_API, "godely", 1);
@@ -224,19 +237,31 @@ const oj = require("./src/adapters/adapter").create({
   getPass: () => "920721",
 });
 
-console.log("0");
-send2(
-  {
-    problem: { id: "33A" },
-    problemId: "33A",
-    language: "73",
-    code: "int main() {} // dasdae21321 ",
-  },
-  true,
-  (a, b) => {
-    console.log("Puxou 1!", a, b);
-  }
-);
+// getBrowser().then((browser) => {
+//   browser.newPage().then((page) => {
+//     page.goto("https://www.globo.com").then(() => {
+//       page.screenshot({ path: "example.png" }).then(() => {
+//         browser.close().then(() => {
+//           console.log("Finished");
+//         });
+//       });
+//     });
+//   });
+// });
+
+// console.log("0");
+// send2(
+//   {
+//     problem: { id: "33A" },
+//     problemId: "33A",
+//     language: "73",
+//     code: "int main() {} // dasdae21321 ",
+//   },
+//   true,
+//   (a, b) => {
+//     console.log("Puxou 1!", a, b);
+//   }
+// );
 
 // oj.send(
 //   { problemId: "33A", language: "73", code: "int main() {}" },
