@@ -6,7 +6,8 @@ const Adapter = require("../adapters/adapter"),
   Submission = require("../../common/models/submission"),
   Errors = require("../../common/errors"),
   SubmissionQueue = require("./queue").SubmissionQueue,
-  Utils = require("../../common/lib/utils");
+  Utils = require("../../common/lib/utils"),
+  Publisher = require("./publisher");
 
 const SubmissionStatus = require("../../common/constants").JUDGE.STATUS;
 
@@ -27,6 +28,7 @@ module.exports = (function () {
     function handleSubmission(job, done) {
       job.progress = job.progress.bind(job, 0, 1);
       job.progress({ oj_id: -1, verdict: SubmissionStatus.PENDING });
+
       let adapter = getNext();
       let submission;
       let judging = false;
@@ -38,6 +40,9 @@ module.exports = (function () {
           },
           (_submission, next) => {
             submission = _submission;
+            Publisher.startSubmission(submission, next);
+          },
+          (_cnt, next) => {
             adapter.send(submission, next);
           },
           (_ojId, next) => {

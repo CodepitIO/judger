@@ -34,7 +34,10 @@ module.exports = (() => {
 
   function startJudgers(callback) {
     for (var name in ojs) {
-      ojs[name].start();
+      // TODO remove
+      if (name !== `cfgym`) {
+        ojs[name].start();
+      }
     }
     return callback();
   }

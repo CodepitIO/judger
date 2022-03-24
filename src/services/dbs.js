@@ -1,15 +1,12 @@
-'use strict';
+"use strict";
 
-const redis     = require('redis'),
-      mongoose  = require('mongoose');
+const redis = require("redis"),
+  mongoose = require("mongoose");
 
-const C = require('../../common/constants');
+const C = require("../../common/constants");
 
-mongoose.Promise = require('bluebird');
-mongoose.connect(C.CONN.MONGO.GET_URL(), {
-  reconnectTries: 5,
-  reconnectInterval: 5000,
-}, (err) => {
+mongoose.Promise = require("bluebird");
+mongoose.connect(C.CONN.MONGO.GET_URL(), {}, (err) => {
   if (err) {
     console.log(err);
     process.exit(1);
@@ -21,7 +18,7 @@ const redisClient = redis.createClient({
   prefix: process.env.NODE_ENV,
 });
 
-redisClient.on('error', console.log);
+redisClient.on("error", console.log);
 
 exports.redisClient = redisClient;
 
