@@ -40,6 +40,7 @@ module.exports = (function (parentCls) {
             browser.visit("file://" + LOGIN_PATH, next);
           },
           (next) => {
+            console.log(acct.getUser());
             browser
               .fill("login_user", acct.getUser())
               .then(() => browser.fill("password", acct.getPass()))
@@ -49,6 +50,7 @@ module.exports = (function (parentCls) {
         ],
         (err) => {
           let html = browser.html() || "";
+          require("fs").writeFileSync("oi.html", html);
           if (!!html.match(LOGIN_TEST_ANTI_REGEX)) {
             return callback(Errors.LoginFail);
           }

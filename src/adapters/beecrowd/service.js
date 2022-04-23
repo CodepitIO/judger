@@ -2,9 +2,7 @@
 
 const path = require("path"),
   async = require("async"),
-  assert = require("assert"),
   Browser = require("zombie"),
-  util = require("util"),
   cheerio = require("cheerio"),
   _ = require("lodash");
 
@@ -38,6 +36,7 @@ module.exports = (function (parentCls) {
             browser.visit(Config.url + LOGIN_PAGE_PATH, next);
           },
           (next) => {
+            require("fs").writeFileSync(Math.random() + "html", browser.html());
             browser
               .fill("#email", acct.getUser())
               .then(() => browser.fill("#password", acct.getPass()))
@@ -91,7 +90,6 @@ module.exports = (function (parentCls) {
           },
         ],
         (err) => {
-          let html = browser.html() || "";
           if (err && !retry) {
             return callback(err);
           } else if (browser.location.pathname.match(LOGIN_PAGE_PATH)) {

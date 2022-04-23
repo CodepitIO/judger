@@ -31,7 +31,7 @@ module.exports = (function (parentCls) {
     const browser = new Browser({ runScripts: false, strictSSL: false });
     const client = new RequestClient(Config.url);
 
-    const AUTHOR_PATH = util.format(AUTHOR_UNF_PATH, acct.getUser());
+    const AUTHOR_PATH = util.format(AUTHOR_UNF_PATH, acct.getId());
 
     function login(callback) {
       return callback();
@@ -48,6 +48,7 @@ module.exports = (function (parentCls) {
         try {
           let $ = cheerio.load(html);
           id = $(".id a").html();
+          console.log(id);
           assert(id && id.length >= 6);
         } catch (e) {
           return callback(Errors.SubmissionFail);
@@ -82,14 +83,12 @@ module.exports = (function (parentCls) {
           if (html.match(INVALID_ACC_PATTERN)) {
             return callback(Errors.LoginFail);
           }
-          console.log(browser.location.pathname, STATUS_PATH);
           if (
             html.match(FAST_SUB_PATTERN) ||
             browser.location.pathname !== STATUS_PATH
           ) {
             return callback(Errors.SubmissionFail);
           }
-          console.log("Aqui!");
           return getSubmissionID(callback);
         }
       );
@@ -107,6 +106,7 @@ module.exports = (function (parentCls) {
           let data = null;
           try {
             data = $('a:contains("' + id + '")');
+            console.log(data.html());
             data = data.parent().nextAll().eq(4);
             if (!data.find("a").html()) {
               data = data.html();
